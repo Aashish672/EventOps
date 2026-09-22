@@ -26,3 +26,22 @@ class TimeStampedModel(models.Model):
 
     class Meta:
         abstract=True
+
+class TenantModel(UUIDModel, TimeStampedModel):
+    """
+    Abstract base model for all tenant-scoped resources.
+    Guarantess every child entity (events, tasks, vendors, budgets) has:
+    1. A secure UUIDv4 primary key (`id`)
+    2. Audit timestamps (`created_at`, `updated_at`)
+    3. An indexed foreign key to its parent `Organization`.
+    """
+
+    organization = models.ForeignKey(
+        "organizations.Organization",
+        on_delete=models.CASCADE,
+        related_name="%(app_label)s_%(class)ss",
+        db_index=True,
+    )
+
+    class Meta:
+        abstract = True
