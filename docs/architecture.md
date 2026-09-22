@@ -28,7 +28,11 @@ To eliminate code duplication across 10+ relational models while enforcing consi
 2. **`TimeStampedModel`**:
    * Declares `created_at` (`auto_now_add=True`) and `updated_at` (`auto_now=True`).
    * Provides consistent auditing across all operational entities.
-3. **`abstract = True`**:
+3. **`TenantModel`**:
+   * Combines `UUIDModel` and `TimeStampedModel`.
+   * Enforces an indexed `ForeignKey` to `organizations.Organization` on every tenant-scoped child entity.
+   * Utilizes dynamic `related_name="%(app_label)s_%(class)ss"` to avoid reverse-relation collisions across child apps.
+4. **`abstract = True`**:
    * Ensures Django does not generate standalone tables for base models; fields are cleanly embedded into inheriting model tables.
 
 ---
