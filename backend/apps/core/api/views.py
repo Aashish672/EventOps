@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from django.core.cache import cache
 from django.db import DatabaseError, connection
@@ -25,7 +25,7 @@ class HealthCheckView(APIView):
         health_status = {
             "status": "healthy",
             "service": "eventops-backend",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "database": "unknown",
             "cache": "unknown",
         }
