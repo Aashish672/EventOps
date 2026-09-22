@@ -1,0 +1,13 @@
+# Ruff linter and formatter configuration for EventOps
+line-length = 88
+target-version = "py313"
+
+[lint]
+# Auto-exclude Django migrations from linting
+exclude = [
+    "*/migrations/*",
+]
+
+[lint.per-file-ignores]
+# Ignore auto-generated Django migration files
+"**/migrations/*" = ["ALL"]
