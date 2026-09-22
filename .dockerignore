@@ -1,0 +1,14 @@
+**/.git
+**/.venv
+**/venv
+**/node_modules
+**/dist
+**/*.pyc
+**/__pycache__
+**/.pytest_cache
+**/.ruff_cache
+**/.env
+**/.env.*
+!**/.env.example
+postgres_data
+redis_data
