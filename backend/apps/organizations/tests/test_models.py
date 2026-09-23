@@ -3,8 +3,7 @@ import uuid
 import pytest
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
-
-from apps.organizations.models import Membership, Organization
+from organizations.models import Membership, Organization
 
 User = get_user_model()
 

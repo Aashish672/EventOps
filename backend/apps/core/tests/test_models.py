@@ -1,6 +1,5 @@
+from core.models import TenantModel, TimeStampedModel, UUIDModel
 from django.db import models
-
-from apps.core.models import TenantModel, TimeStampedModel, UUIDModel
 
 
 def test_uuid_model_is_abstract():
