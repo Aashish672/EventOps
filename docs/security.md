@@ -13,6 +13,11 @@ This document records the security mechanisms, tenant isolation guarantees, and 
    * A user may belong to multiple organizations with differing roles (e.g. `owner` in Org A, `viewer` in Org B).
 3. **Data Integrity Constraints**:
    * `Membership` enforces `unique_together = ("organization", "user")` at the database level to prevent conflicting role assignments.
+4. **API Queryset Tenant Isolation**:
+   * All organization endpoints strictly enforce `Organization.objects.filter(memberships__user=request.user)`.
+   * Unauthorized requests to foreign organization IDs return `404 Not Found` rather than leaking resource existence or metadata.
+5. **Atomic Owner Bootstrapping**:
+   * Creating a tenant executes inside a database transaction (`transaction.atomic`) to ensure the tenant row and the owner `Membership` are committed simultaneously, preventing orphaned tenants.
 
 ---
 

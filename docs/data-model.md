@@ -77,3 +77,23 @@ Represents a User's role and authorization within a specific Organization.
 * **`created_at`** (`DateTimeField`, `auto_now_add=True`).
 * **Constraints**:
   * `unique_together = ("organization", "user")`: Enforces that a user has at most one membership role per organization.
+
+---
+
+## 3. REST API Contracts & Endpoints
+
+### `/api/orgs/`
+* **`GET /api/orgs/`**: List all organizations where the authenticated user has an active membership.
+  * Response: `[{"id": "...", "name": "...", "slug": "...", "plan": "...", "created_at": "...", "updated_at": "..."}]`
+* **`POST /api/orgs/`**: Create a new organization.
+  * Request: `{"name": "Starlight Events", "slug": "starlight-events"}` (`slug` is optional and auto-generated from name if omitted).
+  * Auto-provisions the authenticated user as `role="owner"`.
+  * Response: `201 Created` with serialized organization.
+* **`GET /api/orgs/{id}/`**: Retrieve organization details.
+  * Access: Limited to members of the organization (`404` for non-members).
+* **`GET /api/orgs/{id}/members/`**: List all team members in the organization with their assigned roles.
+  * Response: `[{"id": "...", "organization": "...", "user": {"id": 1, "username": "...", "email": "..."}, "role": "owner", "created_at": "..."}]`
+* **`POST /api/orgs/{id}/members/`**: Add or invite a user to the organization.
+  * Request: `{"email": "colleague@agency.com", "role": "planner"}`
+  * Validation: Requires existing user email and validates user is not already a member.
+  * Response: `201 Created` with serialized `Membership`.
