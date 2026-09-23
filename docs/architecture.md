@@ -66,3 +66,28 @@ To eliminate code duplication across 10+ relational models while enforcing consi
 * **Server-Side RBAC Enforcement (`get_permissions`)**:
   * Destructive and tenant-mutation actions (`update`, `partial_update`, `destroy`) dynamically require `IsOrganizationOwner`.
   * Read actions (`retrieve`, `members:GET`) require active membership (`IsOrganizationMember`).
+
+---
+
+## 5. Frontend Multi-Tenant Architecture (`frontend/src`)
+
+### State Management & Context (`context/`)
+* **`OrganizationContext` & `OrganizationProvider`**:
+  * Tracks global `activeOrg` and available `organizations` list across the application.
+  * Persists selected organization in `localStorage` (`eventops_active_org_id`) to retain tenant context across page reloads.
+  * Manages active tenant members and role permissions (`currentUserRole`).
+  * Graceful Unauthenticated Fallback: Provides pre-seeded demo tenants ("Apex Event Agency", "Summit Global Ops") if the backend returns 401 or during local demo mode, ensuring instant recruiter click-through capability per PRD §4.
+
+### Component Structure (`components/`)
+* **`Navbar`**:
+  * Persistent header featuring brand identity, user role badge, and active tenant indicator.
+  * **Organization Switcher Dropdown**:
+    * Displays active organization with checkmark.
+    * Lists all organizations the user belongs to with quick switching.
+    * Bottom trigger to open the modal for provisioning a new tenant.
+* **`CreateOrgModal`**:
+  * Accessible dialog with backdrop blur, keyboard ESC dismissal, autofocus, and real-time URL slug preview (`/orgs/{slug}`).
+* **`TeamMemberList`**:
+  * Renders active tenant members with user avatars and role badges (`Owner`, `Planner`, `Coordinator`, `Viewer`).
+  * Provides owner-only member invitation by email and role assignment.
+  * Enforces member removal with sole-owner safety check matching backend guardrails.
