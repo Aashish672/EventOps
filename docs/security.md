@@ -37,3 +37,20 @@ This document records the security mechanisms, tenant isolation guarantees, and 
 | **Planner** | Organization-wide | Read-only | Full (create, edit, delete) | Allowed |
 | **Coordinator** | Assigned events | None | Restricted to assigned tasks | Prohibited |
 | **Viewer** | Organization-wide | None | Read-only | Prohibited |
+
+---
+
+## 4. DRF RBAC Permission Classes (`core.permissions`)
+
+Server-side permission classes guard all API routes against unauthorized mutations:
+1. **`IsOrganizationMember`**:
+   * Inspects `obj` (whether an `Organization` or a `TenantModel` child entity) and verifies that `Membership.objects.filter(organization=org, user=request.user).exists()`.
+   * Grants safe read access (`GET`, `HEAD`, `OPTIONS`) to all verified tenant members.
+2. **`IsOrganizationPlannerOrOwner`**:
+   * Grants safe read access to all members, but strictly requires `role in ("owner", "planner")` for mutating operations (`POST`, `PUT`, `PATCH`, `DELETE`).
+   * Designed for upcoming Event and Budget resource CRUD in Sprint 2.
+3. **`IsOrganizationOwner`**:
+   * Strictly restricts operations to users with the `owner` role in the organization.
+   * Enforced on organization renaming (`PATCH /api/orgs/{id}/`), deletion (`DELETE /api/orgs/{id}/`), member invitations (`POST /api/orgs/{id}/members/`), and member removals (`DELETE /api/orgs/{id}/members/{user_id}/`).
+4. **Sole Owner Protection**:
+   * When an owner attempts to delete a member, the system verifies that a sole owner cannot remove themselves (`HTTP 400 Bad Request`), preventing the creation of orphaned organizations without administrative governance.
