@@ -3,6 +3,7 @@ Django settings for EventOps project.
 """
 
 import os
+import sys
 from pathlib import Path
 
 import dj_database_url
@@ -10,6 +11,9 @@ from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Add apps/ directory to sys.path so apps can be imported directly (e.g. from core.models import ...)
+sys.path.insert(0, str(BASE_DIR / "apps"))
 
 # Load environment variables from backend/.env or root .env
 load_dotenv(BASE_DIR / ".env")
@@ -41,8 +45,8 @@ INSTALLED_APPS = [
     "rest_framework",
     "corsheaders",
     # Local apps
-    "apps.core",
-    "apps.organizations",
+    "core",
+    "organizations",
 ]
 
 MIDDLEWARE = [

@@ -8,5 +8,7 @@ from django.urls import include, path
 urlpatterns = [
     path("admin/", admin.site.urls),
     # Core API endpoints (health checks, meta, etc.)
-    path("api/", include("apps.core.urls")),
+    path("api/", include("core.urls")),
+    # Organization & Memberships
+    path("api/", include("organizations.urls")),
 ]

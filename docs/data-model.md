@@ -17,6 +17,13 @@ Provides standardized audit timestamps.
 * **`created_at`** (`DateTimeField`, `auto_now_add=True`, `editable=False`): Recorded upon initial row creation.
 * **`updated_at`** (`DateTimeField`, `auto_now=True`, `editable=False`): Automatically updated on every `.save()`.
 
+### `TenantModel`
+Abstract base class inheriting `UUIDModel` and `TimeStampedModel` for all tenant-scoped business entities (Events, Vendors, Budgets, Tasks).
+* **`organization`** (`ForeignKey -> organizations.Organization`, `on_delete=CASCADE`, `db_index=True`, `related_name="%(app_label)s_%(class)ss"`):
+  * Strictly binds every operational record to a parent `Organization`.
+  * Database-indexed (`db_index=True`) to optimize ubiquitous multi-tenant filtering (`WHERE organization_id = ...`).
+  * Dynamic `related_name` prevents reverse-relation naming collisions across child models.
+
 ---
 
 ## 2. Multi-Tenant Boundary (`apps.organizations.models`)
@@ -70,3 +77,28 @@ Represents a User's role and authorization within a specific Organization.
 * **`created_at`** (`DateTimeField`, `auto_now_add=True`).
 * **Constraints**:
   * `unique_together = ("organization", "user")`: Enforces that a user has at most one membership role per organization.
+
+---
+
+## 3. REST API Contracts & Endpoints
+
+### `/api/orgs/`
+* **`GET /api/orgs/`**: List all organizations where the authenticated user has an active membership.
+  * Response: `[{"id": "...", "name": "...", "slug": "...", "plan": "...", "created_at": "...", "updated_at": "..."}]`
+* **`POST /api/orgs/`**: Create a new organization.
+  * Request: `{"name": "Starlight Events", "slug": "starlight-events"}` (`slug` is optional and auto-generated from name if omitted).
+  * Auto-provisions the authenticated user as `role="owner"`.
+  * Response: `201 Created` with serialized organization.
+* **`GET /api/orgs/{id}/`**: Retrieve organization details.
+  * Access: Limited to members of the organization (`404` for non-members).
+* **`GET /api/orgs/{id}/members/`**: List all team members in the organization with their assigned roles.
+  * Response: `[{"id": "...", "organization": "...", "user": {"id": 1, "username": "...", "email": "..."}, "role": "owner", "created_at": "..."}]`
+* **`POST /api/orgs/{id}/members/`**: Add or invite a user to the organization.
+  * Request: `{"email": "colleague@agency.com", "role": "planner"}`
+  * Authorization: Restricted to `owner` (`403` for non-owners).
+  * Validation: Requires existing user email and validates user is not already a member.
+  * Response: `201 Created` with serialized `Membership`.
+* **`DELETE /api/orgs/{id}/members/{user_id}/`**: Remove a member from the organization.
+  * Authorization: Restricted to `owner` (`403` for non-owners).
+  * Safety Guard: Cannot remove sole owner (`400 Bad Request`).
+  * Response: `204 No Content`.
