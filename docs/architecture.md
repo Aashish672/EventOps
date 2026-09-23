@@ -59,5 +59,10 @@ To eliminate code duplication across 10+ relational models while enforcing consi
   * Guarantees an organization cannot exist without an owner.
 * **Nested Membership Actions**:
   * `@action(detail=True, methods=["get", "post"], url_path="members")`:
-    * `GET`: Lists all organization members, users, and roles via `MembershipSerializer`.
-    * `POST`: Adds or invites a user to the organization by email with a designated role via `MembershipCreateSerializer`.
+    * `GET`: Lists all organization members, users, and roles via `MembershipSerializer` (available to all members).
+    * `POST`: Adds or invites a user to the organization by email (guarded by `IsOrganizationOwner`).
+  * `@action(detail=True, methods=["delete"], url_path="members/(?P<user_id>[^/.]+)")`:
+    * `DELETE`: Removes a team member from the organization (guarded by `IsOrganizationOwner` and sole-owner safety check).
+* **Server-Side RBAC Enforcement (`get_permissions`)**:
+  * Destructive and tenant-mutation actions (`update`, `partial_update`, `destroy`) dynamically require `IsOrganizationOwner`.
+  * Read actions (`retrieve`, `members:GET`) require active membership (`IsOrganizationMember`).

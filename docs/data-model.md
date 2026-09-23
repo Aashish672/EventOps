@@ -95,5 +95,10 @@ Represents a User's role and authorization within a specific Organization.
   * Response: `[{"id": "...", "organization": "...", "user": {"id": 1, "username": "...", "email": "..."}, "role": "owner", "created_at": "..."}]`
 * **`POST /api/orgs/{id}/members/`**: Add or invite a user to the organization.
   * Request: `{"email": "colleague@agency.com", "role": "planner"}`
+  * Authorization: Restricted to `owner` (`403` for non-owners).
   * Validation: Requires existing user email and validates user is not already a member.
   * Response: `201 Created` with serialized `Membership`.
+* **`DELETE /api/orgs/{id}/members/{user_id}/`**: Remove a member from the organization.
+  * Authorization: Restricted to `owner` (`403` for non-owners).
+  * Safety Guard: Cannot remove sole owner (`400 Bad Request`).
+  * Response: `204 No Content`.
