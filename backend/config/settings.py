@@ -24,6 +24,9 @@ SECRET_KEY = os.getenv(
     "SECRET_KEY",
     "django-insecure-local-dev-placeholder-change-in-production"
 )
+SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
 
 DEBUG = os.getenv("DEBUG", "True").lower() in ("true", "1", "yes")
 
@@ -135,8 +138,12 @@ CORS_ALLOW_CREDENTIALS = True
 
 # Django REST Framework
 REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES":[
+        "core.authentication.SupabaseJWTAuthentication",
+        "rest_framework.authentication.SessionAuthentication",
+    ],
     "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.AllowAny",
+        "rest_framework.permissions.IsAuthenticated",
     ],
     "DEFAULT_RENDERER_CLASSES": [
         "rest_framework.renderers.JSONRenderer",
