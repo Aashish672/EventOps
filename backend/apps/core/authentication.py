@@ -40,8 +40,8 @@ class SupabaseJWTAuthentication(authentication.BaseAuthentication):
             raise AuthenticationFailed("The access token has expired. Please log in again.")
         except jwt.DecodeError:
             raise AuthenticationFailed("Invalid access token.")
-        except Exception as e:
-            raise AuthenticationFailed(f"Authentication error: {str(e)}")
+        except Exception as e:  # noqa: BLE001
+            raise AuthenticationFailed(f"Authentication error: {e!s}")
 
         #3. Extract user data from payload
         user_id = payload.get('sub')
@@ -50,7 +50,7 @@ class SupabaseJWTAuthentication(authentication.BaseAuthentication):
         if not user_id:
             raise AuthenticationFailed("Token is missiong user identifier.")
         
-        user, created = User.objects.get_or_create(
+        user, _created = User.objects.get_or_create(
             username=user_id,
             defaults={'email':email}
         )
