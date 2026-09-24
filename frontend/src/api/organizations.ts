@@ -1,6 +1,7 @@
 /**
  * Organization and Membership API Client
  */
+import { supabase } from "../lib/supabase";
 
 export type OrgRole = "owner" | "planner" | "coordinator" | "viewer";
 
@@ -33,20 +34,22 @@ export interface InviteMemberPayload {
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 
-function getCsrfToken(): string | null {
-  const match = document.cookie.match(/csrftoken=([\w-]+)/);
-  return match ? match[1] : null;
-}
 
-function getCommonHeaders(): HeadersInit {
+
+async function getCommonHeaders(): Promise<HeadersInit> {
   const headers: Record<string, string> = {
     Accept: "application/json",
     "Content-Type": "application/json",
   };
-  const csrfToken = getCsrfToken();
-  if (csrfToken) {
-    headers["X-CSRFToken"] = csrfToken;
+
+  // Ask Supabase for the current logged-in user's session
+  const { data: { session } } = await supabase.auth.getSession();
+
+  // If they have a valid token, attach it as a Bearer token
+  if (session?.access_token) {
+    headers["Authorization"] = `Bearer ${session.access_token}`;
   }
+
   return headers;
 }
 
@@ -56,7 +59,7 @@ function getCommonHeaders(): HeadersInit {
 export async function fetchOrganizations(): Promise<Organization[]> {
   const response = await fetch(`${API_BASE_URL}/api/orgs/`, {
     method: "GET",
-    headers: getCommonHeaders(),
+    headers: await getCommonHeaders(),
     credentials: "include",
   });
 
@@ -77,7 +80,7 @@ export async function fetchOrganizations(): Promise<Organization[]> {
 export async function createOrganization(payload: CreateOrgPayload): Promise<Organization> {
   const response = await fetch(`${API_BASE_URL}/api/orgs/`, {
     method: "POST",
-    headers: getCommonHeaders(),
+    headers: await getCommonHeaders(),
     credentials: "include",
     body: JSON.stringify(payload),
   });
@@ -100,7 +103,7 @@ export async function createOrganization(payload: CreateOrgPayload): Promise<Org
 export async function fetchOrganizationMembers(orgId: string): Promise<Membership[]> {
   const response = await fetch(`${API_BASE_URL}/api/orgs/${orgId}/members/`, {
     method: "GET",
-    headers: getCommonHeaders(),
+    headers: await getCommonHeaders(),
     credentials: "include",
   });
 
@@ -120,7 +123,7 @@ export async function inviteOrganizationMember(
 ): Promise<Membership> {
   const response = await fetch(`${API_BASE_URL}/api/orgs/${orgId}/members/`, {
     method: "POST",
-    headers: getCommonHeaders(),
+    headers: await getCommonHeaders(),
     credentials: "include",
     body: JSON.stringify(payload),
   });
@@ -147,7 +150,7 @@ export async function removeOrganizationMember(
 ): Promise<void> {
   const response = await fetch(`${API_BASE_URL}/api/orgs/${orgId}/members/${userId}/`, {
     method: "DELETE",
-    headers: getCommonHeaders(),
+    headers: await getCommonHeaders(),
     credentials: "include",
   });
 
