@@ -64,7 +64,7 @@ export interface VendorBooking {
   vendor: string;
   status: "inquired" | "quoted" | "contracted" | "confirmed" | "cancelled";
   quoted_amount: string | null;
-  contract_terms: Record<string, any>;
+  contract_terms: Record<string, unknown>;
   created_at: string;
 }
 
