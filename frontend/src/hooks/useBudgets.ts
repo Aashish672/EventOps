@@ -71,6 +71,7 @@ export function useCreateBudgetLineItem(eventId: string) {
     mutationFn: (payload: Partial<BudgetLineItem>) => createBudgetLineItem(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: budgetKeys.lineItems(eventId) });
+      queryClient.invalidateQueries({ queryKey: budgetKeys.categories(eventId) });
     },
   });
 }
@@ -82,6 +83,7 @@ export function useUpdateBudgetLineItem(eventId: string) {
       updateBudgetLineItem(id, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: budgetKeys.lineItems(eventId) });
+      queryClient.invalidateQueries({ queryKey: budgetKeys.categories(eventId) });
     },
   });
 }
@@ -92,6 +94,7 @@ export function useDeleteBudgetLineItem(eventId: string) {
     mutationFn: (id: string) => deleteBudgetLineItem(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: budgetKeys.lineItems(eventId) });
+      queryClient.invalidateQueries({ queryKey: budgetKeys.categories(eventId) });
     },
   });
 }

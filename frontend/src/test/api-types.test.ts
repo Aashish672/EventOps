@@ -23,8 +23,8 @@ import type {
 // every expected key is present. TypeScript catches type-level mismatches at
 // compile time, but this also guards against runtime shape issues.
 
-function expectKeys<T extends Record<string, unknown>>(
-  sample: T,
+function expectKeys(
+  sample: object,
   expectedKeys: string[]
 ) {
   const sampleKeys = Object.keys(sample).sort();
