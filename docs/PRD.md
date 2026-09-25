@@ -27,15 +27,15 @@ Multi-tenant from day one. An **Organization** is the tenant boundary; everythin
 | **Owner** | Org-wide | Billing, team management, everything below |
 | **Planner** | Org-wide | Create/manage events, approve agent proposals, manage vendors/budget |
 | **Coordinator** | Assigned events only | Edit tasks/guests/documents on assigned events, cannot approve agent proposals |
-| **Client (Viewer)** | Single event, read-only | View status via a share link, no account required |
+| **Client / Vendor (External)** | Transactional / Scoped | No login required. Interacts entirely via secure **Tokenised Magic Links** for RSVP or Document Uploads. |
 
 ---
 
 ## 4. Goals & Non-Goals
 
-**Goals (v1):** real multi-tenant SaaS with working auth, billing, and notifications; full event-ops CRUD; five governed AI agents; complete audit trail; deployed and seeded so a recruiter can click through it in minutes — all on free-tier infrastructure.
+**Goals (v1):** real multi-tenant SaaS with working auth, billing, and notifications; full event-ops CRUD; five governed AI agents; complete audit trail; Tokenised Magic Links for external users; deployed and seeded so a recruiter can click through it in minutes — all on free-tier infrastructure.
 
-**Non-goals (v1):** vendor marketplace/discovery, native mobile apps, guest-facing RSVP microsites, multi-level approval chains (single approver is enough for v1).
+**Non-goals (v1):** vendor marketplace/discovery (internal CRM only for v1), native mobile apps, multi-level approval chains (single approver is enough for v1).
 
 ---
 
@@ -138,6 +138,14 @@ class Event(models.Model):
     )  # for read-only client link
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+class SubEvent(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="sub_events")
+    name = models.CharField(max_length=255) # e.g. "Day 1 Conference"
+    start_time = models.DateTimeField()
+    end_time = models.DateTimeField()
+    venue_name = models.CharField(max_length=255, blank=True)
 ```
 
 ### 5.4 Tasks & Timeline
@@ -189,6 +197,13 @@ class BudgetLineItem(models.Model):
     actual_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     paid = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
+
+class InventoryBlock(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
+    line_item = models.ForeignKey(BudgetLineItem, on_delete=models.CASCADE, related_name="inventory")
+    name = models.CharField(max_length=255) # e.g. "King Bed Room Block"
+    quantity = models.PositiveIntegerField(default=1)
+    status = models.CharField(max_length=50, default="held")
 ```
 
 ### 5.6 Guests
@@ -341,6 +356,19 @@ class Notification(models.Model):
     body = models.TextField()
     sent = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
+
+class Message(models.Model):
+    # Omnichannel Communication Log (Email/WhatsApp)
+    CHANNEL_CHOICES = [("email", "Email"), ("whatsapp", "WhatsApp")]
+    DIRECTION_CHOICES = [("inbound", "Inbound"), ("outbound", "Outbound")]
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="messages")
+    vendor = models.ForeignKey(Vendor, on_delete=models.SET_NULL, null=True, blank=True)
+    channel = models.CharField(max_length=20, choices=CHANNEL_CHOICES)
+    direction = models.CharField(max_length=20, choices=DIRECTION_CHOICES)
+    content = models.TextField()
+    raw_payload = models.JSONField(default=dict)
+    created_at = models.DateTimeField(auto_now_add=True)
 ```
 
 ### 5.10 Row-Level Security (Supabase)
@@ -375,11 +403,11 @@ Repeat per table (`vendors`, `tasks`, `budget_categories`, `guests`, `documents`
 ### 6.1 Core Platform
 Auth (email/password + Google OAuth) · org creation & team invites · RBAC · Stripe subscription billing (Free/Pro/Agency tiers) · event CRUD · task/timeline management with dependencies (Kanban + Gantt view) · budget management (planned vs actual, category rollups) · shared vendor directory · vendor booking per event · guest list with RSVP & dietary/accessibility notes · document upload with versioning · email + SMS notifications · full activity/audit log · cross-event dashboard (upcoming deadlines, budget health, pending approvals) · read-only client share link.
 
-### 6.2 AI Agent Layer
-Document Intelligence Agent · Event Planning Agent · Budget Intelligence Agent · Vendor Evaluation Agent · Risk & Change Impact Agent · unified Agent Console (Approve / Reject / Edit-then-approve on every proposal).
+### 6.2 AI Agent Layer & Integrations
+Document Intelligence Agent · Event Planning Agent · Budget Intelligence Agent · AI Vendor Negotiator (Quote Benchmarking) · Risk & Change Impact Agent · MCP (Model Context Protocol) Server for external LLM access.
 
-### 6.3 Phase 2 (post-MVP)
-Multi-level approval chains · guest-facing RSVP micro-pages · vendor self-service portal · calendar sync · agency-wide profitability analytics.
+### 6.3 Phase 5: External Portals & Omnichannel
+Tokenised Magic Links (JWT) for secure, no-login Guest RSVPs and Vendor Document Uploads · WhatsApp/Twilio Inbound Message parsing for the AI agent.
 
 ---
 
@@ -430,11 +458,10 @@ class AgentState(TypedDict):
 
 | Agent | Reads | Proposes | Notes |
 |---|---|---|---|
-| **Document Intelligence** | Uploaded PDF (contract/quote) | Structured `contract_terms` JSON for a `VendorBooking` (price, dates, cancellation clause, deliverables) | Use a free-tier multimodal model (Gemini 1.5 Flash free tier reads PDFs directly) |
+| **Document Intelligence (Vendor Negotiator)** | Uploaded PDF (contract/quote) | Extracts structured line items, compares to budget & historical benchmarks (`pgvector`), drafts negotiation email/WhatsApp | Use a free-tier multimodal model (Gemini 1.5 Flash) |
 | **Event Planning** | Event type, date, budget, headcount | Draft `Task` list + rough timeline | Runs once on event creation |
 | **Budget Intelligence** | All `BudgetLineItem`s for the event | Reallocation suggestions, overrun flags, forecast final cost | Runs on budget edit or nightly via scheduled job |
-| **Vendor Evaluation** | All quotes/bookings for a category on this event | Ranked comparison with scoring rationale | Runs when 2+ quotes exist for the same category |
-| **Risk & Change Impact** | Full event snapshot (tasks, budget, vendor bookings, dependencies) | Impact summary + remediation plan (task shifts, budget reallocation, vendor alternatives) | Runs on any material field change (date, venue, headcount, vendor status) |
+| **Risk & Change Impact** | Full event snapshot (tasks, budget, vendors) | Impact summary + remediation plan | Runs on material field changes |
 
 ### 8.3 Tooling rule
 
@@ -456,8 +483,9 @@ Every agent gets **read-only** DB tools (via LangGraph tool calls) scoped to its
 /api/events/{id}/documents/          upload -> Supabase Storage, triggers Document Intelligence Agent
 /api/events/{id}/agent-runs/         list, /agent-runs/{id}/approve, /reject, /edit-approve
 /api/events/{id}/change-log/         read-only audit trail
-/api/billing/webhook/                Stripe webhook (signature-verified)
-/api/notifications/webhook/          Twilio delivery status webhook
+/api/mcp/                            Model Context Protocol server for external agent access
+/api/webhooks/stripe/                Stripe billing webhook
+/api/webhooks/twilio/                WhatsApp inbound message parsing
 ```
 
 Agent triggers are fired from Django signal handlers / service-layer calls (e.g. saving an `Event` with a changed `event_date` enqueues a Risk & Change Impact run) rather than baked into serializers — keeps the agent layer swappable.
