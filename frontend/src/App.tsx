@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Session } from "@supabase/supabase-js";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Users, Settings, CreditCard } from "lucide-react";
 import { OrganizationProvider } from "./context/OrganizationProvider";
 import { useOrganization } from "./context/useOrganization";
@@ -9,6 +10,8 @@ import { GeneralSettingsTab } from "./components/settings/GeneralSettingsTab";
 import { CreateOrgModal } from "./components/CreateOrgModal";
 import { supabase } from "./lib/supabase";
 import { AuthScreen } from "./components/AuthScreen";
+
+const queryClient = new QueryClient();
 
 const AppContent: React.FC = () => {
   const { activeOrg, members } = useOrganization();
@@ -108,8 +111,10 @@ export const App: React.FC = () => {
 
   // If they are logged in, show the actual application!
   return (
-    <OrganizationProvider>
-      <AppContent />
-    </OrganizationProvider>
+    <QueryClientProvider client={queryClient}>
+      <OrganizationProvider>
+        <AppContent />
+      </OrganizationProvider>
+    </QueryClientProvider>
   );
 };

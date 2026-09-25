@@ -6,7 +6,7 @@ export interface HealthCheckResponse {
   cache: string;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
+import { API_BASE_URL } from "./core";
 
 export async function fetchHealthCheck(): Promise<HealthCheckResponse> {
   const url = `${API_BASE_URL}/api/health/`;
