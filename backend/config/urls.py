@@ -4,7 +4,12 @@ URL configuration for EventOps project.
 
 from django.contrib import admin
 from django.urls import include, path
-from events.views import EventViewSet
+from events.views import (
+    BudgetCategoryViewSet,
+    BudgetLineItemViewSet,
+    EventViewSet,
+    TaskViewSet,
+)
 from rest_framework.routers import DefaultRouter
 from vendors.views import VendorViewSet
 
@@ -12,6 +17,11 @@ from vendors.views import VendorViewSet
 # the GET, POST, PUT, DELETE routes for us based on the ViewSets!
 router = DefaultRouter()
 router.register(r"events", EventViewSet, basename="event")
+router.register(r"tasks", TaskViewSet, basename="task")
+router.register(r"budget-categories", BudgetCategoryViewSet, basename="budget-category")
+router.register(
+    r"budget-line-items", BudgetLineItemViewSet, basename="budget-line-item"
+)
 router.register(r"vendors", VendorViewSet, basename="vendor")
 
 urlpatterns = [
