@@ -7,8 +7,12 @@ from django.urls import include, path
 from events.views import (
     BudgetCategoryViewSet,
     BudgetLineItemViewSet,
+    DocumentViewSet,
     EventViewSet,
+    GuestHouseholdViewSet,
+    GuestViewSet,
     TaskViewSet,
+    VendorBookingViewSet,
 )
 from rest_framework.routers import DefaultRouter
 from vendors.views import VendorViewSet
@@ -23,6 +27,12 @@ router.register(
     r"budget-line-items", BudgetLineItemViewSet, basename="budget-line-item"
 )
 router.register(r"vendors", VendorViewSet, basename="vendor")
+
+router.register(r"guest-households", GuestHouseholdViewSet, basename="guest-household")
+router.register(r"guests", GuestViewSet, basename="guest")
+router.register(r"vendor-bookings", VendorBookingViewSet, basename="vendor-booking")
+router.register(r"documents", DocumentViewSet, basename="document")
+
 
 urlpatterns = [
     path("admin/", admin.site.urls),

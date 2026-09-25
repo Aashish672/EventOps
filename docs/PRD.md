@@ -50,18 +50,31 @@ class Organization(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     name = models.CharField(max_length=255)
     slug = models.SlugField(unique=True)
-    plan = models.CharField(max_length=20, choices=[("free", "Free"), ("pro", "Pro"), ("agency", "Agency")], default="free")
+    plan = models.CharField(
+        max_length=20,
+        choices=[("free", "Free"), ("pro", "Pro"), ("agency", "Agency")],
+        default="free",
+    )
     stripe_customer_id = models.CharField(max_length=255, blank=True, null=True)
     stripe_subscription_id = models.CharField(max_length=255, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+
 class Membership(models.Model):
-    ROLE_CHOICES = [("owner", "Owner"), ("planner", "Planner"), ("coordinator", "Coordinator"), ("viewer", "Viewer")]
+    ROLE_CHOICES = [
+        ("owner", "Owner"),
+        ("planner", "Planner"),
+        ("coordinator", "Coordinator"),
+        ("viewer", "Viewer"),
+    ]
     id = models.UUIDField(primary_key=True, default=uuid.uuid4)
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="memberships")
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="memberships"
+    )
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES)
     created_at = models.DateTimeField(auto_now_add=True)
+
     class Meta:
         unique_together = ("organization", "user")
 ```
@@ -70,11 +83,19 @@ class Membership(models.Model):
 
 ```python
 class Vendor(models.Model):
-    CATEGORY_CHOICES = [("venue","Venue"),("catering","Catering"),("decor","Decor"),
-                         ("photography","Photography"),("entertainment","Entertainment"),
-                         ("transport","Transport"),("other","Other")]
+    CATEGORY_CHOICES = [
+        ("venue", "Venue"),
+        ("catering", "Catering"),
+        ("decor", "Decor"),
+        ("photography", "Photography"),
+        ("entertainment", "Entertainment"),
+        ("transport", "Transport"),
+        ("other", "Other"),
+    ]
     id = models.UUIDField(primary_key=True, default=uuid.uuid4)
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="vendors")
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="vendors"
+    )
     name = models.CharField(max_length=255)
     category = models.CharField(max_length=30, choices=CATEGORY_CHOICES)
     contact_name = models.CharField(max_length=255, blank=True)
@@ -89,19 +110,32 @@ class Vendor(models.Model):
 
 ```python
 class Event(models.Model):
-    STATUS_CHOICES = [("planning","Planning"),("confirmed","Confirmed"),
-                       ("in_progress","In Progress"),("completed","Completed"),("cancelled","Cancelled")]
+    STATUS_CHOICES = [
+        ("planning", "Planning"),
+        ("confirmed", "Confirmed"),
+        ("in_progress", "In Progress"),
+        ("completed", "Completed"),
+        ("cancelled", "Cancelled"),
+    ]
     id = models.UUIDField(primary_key=True, default=uuid.uuid4)
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="events")
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="events"
+    )
     name = models.CharField(max_length=255)
-    event_type = models.CharField(max_length=50)   # wedding, corporate, birthday, conference...
+    event_type = models.CharField(
+        max_length=50
+    )  # wedding, corporate, birthday, conference...
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="planning")
     venue_name = models.CharField(max_length=255, blank=True)
     event_date = models.DateTimeField()
     expected_guest_count = models.PositiveIntegerField(default=0)
     total_budget = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    primary_planner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
-    client_share_token = models.UUIDField(default=uuid.uuid4, unique=True)  # for read-only client link
+    primary_planner = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True
+    )
+    client_share_token = models.UUIDField(
+        default=uuid.uuid4, unique=True
+    )  # for read-only client link
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 ```
@@ -110,15 +144,24 @@ class Event(models.Model):
 
 ```python
 class Task(models.Model):
-    STATUS_CHOICES = [("todo","To Do"),("in_progress","In Progress"),("blocked","Blocked"),("done","Done")]
+    STATUS_CHOICES = [
+        ("todo", "To Do"),
+        ("in_progress", "In Progress"),
+        ("blocked", "Blocked"),
+        ("done", "Done"),
+    ]
     id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="tasks")
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="todo")
-    assignee = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    assignee = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True
+    )
     due_date = models.DateTimeField(null=True, blank=True)
-    depends_on = models.ManyToManyField("self", symmetrical=False, blank=True, related_name="blocks")
+    depends_on = models.ManyToManyField(
+        "self", symmetrical=False, blank=True, related_name="blocks"
+    )
     created_by_agent = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 ```
@@ -128,13 +171,18 @@ class Task(models.Model):
 ```python
 class BudgetCategory(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4)
-    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="budget_categories")
-    name = models.CharField(max_length=100)          # Venue, Catering, Decor...
+    event = models.ForeignKey(
+        Event, on_delete=models.CASCADE, related_name="budget_categories"
+    )
+    name = models.CharField(max_length=100)  # Venue, Catering, Decor...
     planned_amount = models.DecimalField(max_digits=12, decimal_places=2)
+
 
 class BudgetLineItem(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4)
-    category = models.ForeignKey(BudgetCategory, on_delete=models.CASCADE, related_name="line_items")
+    category = models.ForeignKey(
+        BudgetCategory, on_delete=models.CASCADE, related_name="line_items"
+    )
     vendor = models.ForeignKey(Vendor, on_delete=models.SET_NULL, null=True, blank=True)
     description = models.CharField(max_length=255)
     planned_amount = models.DecimalField(max_digits=12, decimal_places=2)
@@ -148,16 +196,28 @@ class BudgetLineItem(models.Model):
 ```python
 class GuestHousehold(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4)
-    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="households")
+    event = models.ForeignKey(
+        Event, on_delete=models.CASCADE, related_name="households"
+    )
     name = models.CharField(max_length=255)
     max_size = models.PositiveIntegerField(default=1)
 
+
 class Guest(models.Model):
-    RSVP_CHOICES = [("pending","Pending"),("yes","Yes"),("no","No"),("maybe","Maybe")]
+    RSVP_CHOICES = [
+        ("pending", "Pending"),
+        ("yes", "Yes"),
+        ("no", "No"),
+        ("maybe", "Maybe"),
+    ]
     id = models.UUIDField(primary_key=True, default=uuid.uuid4)
-    household = models.ForeignKey(GuestHousehold, on_delete=models.CASCADE, related_name="guests")
+    household = models.ForeignKey(
+        GuestHousehold, on_delete=models.CASCADE, related_name="guests"
+    )
     full_name = models.CharField(max_length=255)
-    rsvp_status = models.CharField(max_length=10, choices=RSVP_CHOICES, default="pending")
+    rsvp_status = models.CharField(
+        max_length=10, choices=RSVP_CHOICES, default="pending"
+    )
     dietary_notes = models.CharField(max_length=255, blank=True)
     accessibility_notes = models.CharField(max_length=255, blank=True)
 ```
@@ -166,25 +226,48 @@ class Guest(models.Model):
 
 ```python
 class VendorBooking(models.Model):
-    STATUS_CHOICES = [("inquired","Inquired"),("quoted","Quoted"),("contracted","Contracted"),
-                       ("confirmed","Confirmed"),("cancelled","Cancelled")]
+    STATUS_CHOICES = [
+        ("inquired", "Inquired"),
+        ("quoted", "Quoted"),
+        ("contracted", "Contracted"),
+        ("confirmed", "Confirmed"),
+        ("cancelled", "Cancelled"),
+    ]
     id = models.UUIDField(primary_key=True, default=uuid.uuid4)
-    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="vendor_bookings")
-    vendor = models.ForeignKey(Vendor, on_delete=models.CASCADE, related_name="bookings")
+    event = models.ForeignKey(
+        Event, on_delete=models.CASCADE, related_name="vendor_bookings"
+    )
+    vendor = models.ForeignKey(
+        Vendor, on_delete=models.CASCADE, related_name="bookings"
+    )
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="inquired")
-    quoted_amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
-    contract_terms = models.JSONField(default=dict, blank=True)   # extracted by Document Intelligence Agent
+    quoted_amount = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True
+    )
+    contract_terms = models.JSONField(
+        default=dict, blank=True
+    )  # extracted by Document Intelligence Agent
     created_at = models.DateTimeField(auto_now_add=True)
 
+
 class Document(models.Model):
-    DOC_TYPE_CHOICES = [("contract","Contract"),("quote","Quote"),("floor_plan","Floor Plan"),("other","Other")]
+    DOC_TYPE_CHOICES = [
+        ("contract", "Contract"),
+        ("quote", "Quote"),
+        ("floor_plan", "Floor Plan"),
+        ("other", "Other"),
+    ]
     id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="documents")
-    vendor_booking = models.ForeignKey(VendorBooking, on_delete=models.SET_NULL, null=True, blank=True)
+    vendor_booking = models.ForeignKey(
+        VendorBooking, on_delete=models.SET_NULL, null=True, blank=True
+    )
     doc_type = models.CharField(max_length=20, choices=DOC_TYPE_CHOICES)
-    file_path = models.CharField(max_length=500)     # Supabase Storage path
+    file_path = models.CharField(max_length=500)  # Supabase Storage path
     version = models.PositiveIntegerField(default=1)
-    uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True
+    )
     uploaded_at = models.DateTimeField(auto_now_add=True)
 ```
 
@@ -192,35 +275,56 @@ class Document(models.Model):
 
 ```python
 class AgentRun(models.Model):
-    AGENT_CHOICES = [("document_intelligence","Document Intelligence"),("event_planning","Event Planning"),
-                      ("budget_intelligence","Budget Intelligence"),("vendor_evaluation","Vendor Evaluation"),
-                      ("risk_change_impact","Risk & Change Impact")]
-    STATE_CHOICES = [("pending","Pending Review"),("approved","Approved"),
-                      ("rejected","Rejected"),("edited_approved","Edited & Approved")]
+    AGENT_CHOICES = [
+        ("document_intelligence", "Document Intelligence"),
+        ("event_planning", "Event Planning"),
+        ("budget_intelligence", "Budget Intelligence"),
+        ("vendor_evaluation", "Vendor Evaluation"),
+        ("risk_change_impact", "Risk & Change Impact"),
+    ]
+    STATE_CHOICES = [
+        ("pending", "Pending Review"),
+        ("approved", "Approved"),
+        ("rejected", "Rejected"),
+        ("edited_approved", "Edited & Approved"),
+    ]
     id = models.UUIDField(primary_key=True, default=uuid.uuid4)
-    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="agent_runs")
+    event = models.ForeignKey(
+        Event, on_delete=models.CASCADE, related_name="agent_runs"
+    )
     agent_type = models.CharField(max_length=30, choices=AGENT_CHOICES)
-    trigger = models.CharField(max_length=255)         # what caused this run, e.g. "vendor_cancelled"
-    input_snapshot = models.JSONField()                 # DB state passed into the agent
-    reasoning = models.TextField()                      # agent's explanation
-    proposed_diff = models.JSONField()                   # structured before/after
-    final_diff = models.JSONField(null=True, blank=True) # what was actually applied, if edited
+    trigger = models.CharField(
+        max_length=255
+    )  # what caused this run, e.g. "vendor_cancelled"
+    input_snapshot = models.JSONField()  # DB state passed into the agent
+    reasoning = models.TextField()  # agent's explanation
+    proposed_diff = models.JSONField()  # structured before/after
+    final_diff = models.JSONField(
+        null=True, blank=True
+    )  # what was actually applied, if edited
     state = models.CharField(max_length=20, choices=STATE_CHOICES, default="pending")
-    reviewed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True
+    )
     reviewed_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+
 class ChangeLogEntry(models.Model):
-    ACTOR_TYPE_CHOICES = [("user","User"),("agent","Agent")]
+    ACTOR_TYPE_CHOICES = [("user", "User"), ("agent", "Agent")]
     id = models.UUIDField(primary_key=True, default=uuid.uuid4)
-    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="change_log")
+    event = models.ForeignKey(
+        Event, on_delete=models.CASCADE, related_name="change_log"
+    )
     actor_type = models.CharField(max_length=10, choices=ACTOR_TYPE_CHOICES)
-    actor_id = models.CharField(max_length=255)          # user id or agent_type
-    entity_type = models.CharField(max_length=50)         # "Task", "BudgetLineItem", etc.
+    actor_id = models.CharField(max_length=255)  # user id or agent_type
+    entity_type = models.CharField(max_length=50)  # "Task", "BudgetLineItem", etc.
     entity_id = models.UUIDField()
     before = models.JSONField(null=True)
     after = models.JSONField(null=True)
-    agent_run = models.ForeignKey(AgentRun, on_delete=models.SET_NULL, null=True, blank=True)
+    agent_run = models.ForeignKey(
+        AgentRun, on_delete=models.SET_NULL, null=True, blank=True
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 ```
 
@@ -228,7 +332,7 @@ class ChangeLogEntry(models.Model):
 
 ```python
 class Notification(models.Model):
-    CHANNEL_CHOICES = [("email","Email"),("sms","SMS"),("in_app","In-App")]
+    CHANNEL_CHOICES = [("email", "Email"), ("sms", "SMS"), ("in_app", "In-App")]
     id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
@@ -315,10 +419,10 @@ graph TD
 ```python
 class AgentState(TypedDict):
     event_id: str
-    trigger: str                     # e.g. "vendor_cancelled", "budget_edited", "doc_uploaded"
-    db_snapshot: dict                # relevant event/tasks/budget/vendors, read-only
-    prior_outputs: dict               # other agents' outputs this run, so Risk agent can see Budget agent's numbers
-    proposal: dict | None             # final structured diff
+    trigger: str  # e.g. "vendor_cancelled", "budget_edited", "doc_uploaded"
+    db_snapshot: dict  # relevant event/tasks/budget/vendors, read-only
+    prior_outputs: dict  # other agents' outputs this run, so Risk agent can see Budget agent's numbers
+    proposal: dict | None  # final structured diff
     reasoning: str | None
 ```
 
