@@ -5,13 +5,16 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 from events.models import (
     BudgetCategory,
+    Document,
     Event,
     GuestHousehold,
     Task,
+    VendorBooking,
 )
 from organizations.models import Membership, Organization
 from rest_framework import status
 from rest_framework.test import APIClient
+from vendors.models import Vendor
 
 User = get_user_model()
 
@@ -246,3 +249,64 @@ def test_guest_cross_tenant_validation(api_client, auth_user, event, other_user)
     # The API should reject this!
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert "does not belong to the selected event" in str(response.data)
+
+
+@pytest.mark.django_db
+def test_create_vendor_booking_success(api_client, auth_user, event, organization):
+    api_client.force_authenticate(user=auth_user)
+    vendor = Vendor.objects.create(
+        organization=organization,
+        name="Delicious Catering",
+        category="catering",
+    )
+    payload = {
+        "event": str(event.id),
+        "vendor": str(vendor.id),
+        "status": "booked",
+        "agreed_price": "2500.00",
+        "contract_notes": "Signed and deposit paid",
+    }
+    response = api_client.post("/api/vendor-bookings/", data=payload, format="json")
+    assert response.status_code == status.HTTP_201_CREATED
+    assert response.data["status"] == "booked"
+    assert response.data["agreed_price"] == "2500.00"
+    assert VendorBooking.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_vendor_booking_cross_tenant_validation(api_client, auth_user, event):
+    api_client.force_authenticate(user=auth_user)
+    other_org = Organization.objects.create(
+        name="Other Vendor Org", slug="other-vendor-org"
+    )
+    Membership.objects.create(organization=other_org, user=auth_user, role="owner")
+    vendor_other_org = Vendor.objects.create(
+        organization=other_org,
+        name="Other Org Florist",
+        category="florist",
+    )
+    payload = {
+        "event": str(event.id),
+        "vendor": str(vendor_other_org.id),
+        "status": "inquiry",
+    }
+    response = api_client.post("/api/vendor-bookings/", data=payload, format="json")
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert "does not belong to your organization" in str(response.data)
+
+
+@pytest.mark.django_db
+def test_create_document_success_assigns_uploader(api_client, auth_user, event):
+    api_client.force_authenticate(user=auth_user)
+    payload = {
+        "event": str(event.id),
+        "title": "Floor Plan",
+        "file_url": "https://storage.example.com/docs/floorplan.pdf",
+    }
+    response = api_client.post("/api/documents/", data=payload, format="json")
+    assert response.status_code == status.HTTP_201_CREATED
+    assert response.data["title"] == "Floor Plan"
+    assert response.data["uploaded_by"] == auth_user.id
+    doc = Document.objects.get(id=response.data["id"])
+    assert doc.uploaded_by == auth_user
+    assert doc.organization == event.organization
