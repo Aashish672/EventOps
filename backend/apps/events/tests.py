@@ -6,11 +6,8 @@ from django.utils import timezone
 from events.models import (
     BudgetCategory,
     Event,
-    Task,
     GuestHousehold,
-    Guest,
-    VendorBooking,
-    Document,
+    Task,
 )
 from organizations.models import Membership, Organization
 from rest_framework import status

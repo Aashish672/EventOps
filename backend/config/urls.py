@@ -7,14 +7,13 @@ from django.urls import include, path
 from events.views import (
     BudgetCategoryViewSet,
     BudgetLineItemViewSet,
+    DocumentViewSet,
     EventViewSet,
-    TaskViewSet,
     GuestHouseholdViewSet,
     GuestViewSet,
+    TaskViewSet,
     VendorBookingViewSet,
-    DocumentViewSet,
 )
-
 from rest_framework.routers import DefaultRouter
 from vendors.views import VendorViewSet
 
