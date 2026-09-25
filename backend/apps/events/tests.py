@@ -3,7 +3,15 @@ from datetime import timedelta
 import pytest
 from django.contrib.auth import get_user_model
 from django.utils import timezone
-from events.models import BudgetCategory, Event, Task
+from events.models import (
+    BudgetCategory,
+    Event,
+    Task,
+    GuestHousehold,
+    Guest,
+    VendorBooking,
+    Document,
+)
 from organizations.models import Membership, Organization
 from rest_framework import status
 from rest_framework.test import APIClient
@@ -188,5 +196,56 @@ def test_budget_line_item_cross_tenant_validation(
         "estimated_cost": "500.00",
     }
     response = api_client.post("/api/budget-line-items/", data=payload, format="json")
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert "does not belong to the selected event" in str(response.data)
+
+
+@pytest.mark.django_db
+def test_create_guest_success(api_client, auth_user, event):
+    api_client.force_authenticate(user=auth_user)
+    household = GuestHousehold.objects.create(
+        organization=event.organization, event=event, name="The Smiths"
+    )
+
+    payload = {
+        "household": str(household.id),
+        "event": str(event.id),
+        "first_name": "John",
+        "last_name": "Smith",
+    }
+    response = api_client.post("/api/guests/", data=payload, format="json")
+    assert response.status_code == status.HTTP_201_CREATED
+    assert response.data["first_name"] == "John"
+
+
+@pytest.mark.django_db
+def test_guest_cross_tenant_validation(api_client, auth_user, event, other_user):
+    api_client.force_authenticate(user=auth_user)
+
+    # Create another org and event
+    other_org = Organization.objects.create(name="Other Org 2", slug="other-org-2")
+    Membership.objects.create(organization=other_org, user=auth_user, role="owner")
+    other_event = Event.objects.create(
+        organization=other_org,
+        name="Other Event 2",
+        start_date=timezone.now(),
+        end_date=timezone.now() + timedelta(days=1),
+    )
+
+    # Household belongs to Event 1
+    household = GuestHousehold.objects.create(
+        organization=event.organization, event=event, name="The Smiths"
+    )
+
+    # Attempt to create a Guest in Event 2 but linked to Household from Event 1
+    payload = {
+        "household": str(household.id),
+        "event": str(other_event.id),
+        "first_name": "Sneaky",
+        "last_name": "Guest",
+    }
+    response = api_client.post("/api/guests/", data=payload, format="json")
+
+    # The API should reject this!
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert "does not belong to the selected event" in str(response.data)

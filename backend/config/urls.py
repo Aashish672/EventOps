@@ -9,7 +9,12 @@ from events.views import (
     BudgetLineItemViewSet,
     EventViewSet,
     TaskViewSet,
+    GuestHouseholdViewSet,
+    GuestViewSet,
+    VendorBookingViewSet,
+    DocumentViewSet,
 )
+
 from rest_framework.routers import DefaultRouter
 from vendors.views import VendorViewSet
 
@@ -23,6 +28,12 @@ router.register(
     r"budget-line-items", BudgetLineItemViewSet, basename="budget-line-item"
 )
 router.register(r"vendors", VendorViewSet, basename="vendor")
+
+router.register(r"guest-households", GuestHouseholdViewSet, basename="guest-household")
+router.register(r"guests", GuestViewSet, basename="guest")
+router.register(r"vendor-bookings", VendorBookingViewSet, basename="vendor-booking")
+router.register(r"documents", DocumentViewSet, basename="document")
+
 
 urlpatterns = [
     path("admin/", admin.site.urls),
