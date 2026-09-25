@@ -21,9 +21,11 @@ load_dotenv(BASE_DIR.parent / ".env")
 
 # Quick-start development settings - unsuitable for production
 SECRET_KEY = os.getenv(
-    "SECRET_KEY",
-    "django-insecure-local-dev-placeholder-change-in-production"
+    "SECRET_KEY", "django-insecure-local-dev-placeholder-change-in-production"
 )
+SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
 
 DEBUG = os.getenv("DEBUG", "True").lower() in ("true", "1", "yes")
 
@@ -47,6 +49,8 @@ INSTALLED_APPS = [
     # Local apps
     "core",
     "organizations",
+    "vendors",
+    "events",
 ]
 
 MIDDLEWARE = [
@@ -86,10 +90,13 @@ ASGI_APPLICATION = "config.asgi.application"
 # Supports SQLite fallback for lightweight unit testing when USE_SQLITE is set.
 default_db_url = os.getenv(
     "DATABASE_URL",
-    f"postgres://{os.getenv('POSTGRES_USER', 'eventops')}:{os.getenv('POSTGRES_PASSWORD', 'eventops_password')}@{os.getenv('POSTGRES_HOST', 'localhost')}:{os.getenv('POSTGRES_PORT', '5432')}/{os.getenv('POSTGRES_DB', 'eventops_db')}"
+    f"postgres://{os.getenv('POSTGRES_USER', 'eventops')}:{os.getenv('POSTGRES_PASSWORD', 'eventops_password')}@{os.getenv('POSTGRES_HOST', 'localhost')}:{os.getenv('POSTGRES_PORT', '5432')}/{os.getenv('POSTGRES_DB', 'eventops_db')}",
 )
 
-if os.getenv("USE_SQLITE", "False").lower() in ("true", "1") or "sqlite" in default_db_url:
+if (
+    os.getenv("USE_SQLITE", "False").lower() in ("true", "1")
+    or "sqlite" in default_db_url
+):
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
@@ -107,7 +114,9 @@ else:
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
-    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"
+    },
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
@@ -128,15 +137,21 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # CORS Configuration
 CORS_ALLOWED_ORIGINS = [
     origin.strip()
-    for origin in os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")
+    for origin in os.getenv(
+        "CORS_ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"
+    ).split(",")
     if origin.strip()
 ]
 CORS_ALLOW_CREDENTIALS = True
 
 # Django REST Framework
 REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "core.authentication.SupabaseJWTAuthentication",
+        "rest_framework.authentication.SessionAuthentication",
+    ],
     "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.AllowAny",
+        "rest_framework.permissions.IsAuthenticated",
     ],
     "DEFAULT_RENDERER_CLASSES": [
         "rest_framework.renderers.JSONRenderer",
@@ -145,8 +160,12 @@ REST_FRAMEWORK = {
 }
 
 # Celery Configuration
-CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", os.getenv("REDIS_URL", "redis://localhost:6379/0"))
-CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", os.getenv("REDIS_URL", "redis://localhost:6379/0"))
+CELERY_BROKER_URL = os.getenv(
+    "CELERY_BROKER_URL", os.getenv("REDIS_URL", "redis://localhost:6379/0")
+)
+CELERY_RESULT_BACKEND = os.getenv(
+    "CELERY_RESULT_BACKEND", os.getenv("REDIS_URL", "redis://localhost:6379/0")
+)
 CELERY_TIMEZONE = "UTC"
 CELERY_TASK_TRACK_STARTED = True
 

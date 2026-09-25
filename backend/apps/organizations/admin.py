@@ -7,7 +7,7 @@ from .models import Membership, Organization
 class OrganizationAdmin(admin.ModelAdmin):
     list_display = ("name", "slug", "plan", "created_at")
     search_fields = ("name", "slug")
-    prepopulated_fields = {"slug": ("name",)}  # noqa: RUF012
+    prepopulated_fields = {"slug": ("name",)}
 
 
 @admin.register(Membership)

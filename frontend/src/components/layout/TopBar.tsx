@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { useOrganization } from "../../context/useOrganization";
 import { fetchHealthCheck } from "../../api/client";
-
+import { supabase } from '../../lib/supabase';
 export const TopBar: React.FC = () => {
   const {
     organizations,
@@ -140,8 +140,8 @@ export const TopBar: React.FC = () => {
             {healthStatus === "healthy"
               ? "System Healthy"
               : healthStatus === "degraded"
-              ? "System Degraded"
-              : "Backend Offline"}
+                ? "System Degraded"
+                : "Backend Offline"}
           </span>
         </div>
 
@@ -164,6 +164,13 @@ export const TopBar: React.FC = () => {
           <span className={`badge-role role-${currentUserRole.toLowerCase()}`}>
             {currentUserRole.toUpperCase()}
           </span>
+          <button 
+            onClick={() => supabase.auth.signOut()} 
+            className="btn btn-secondary" 
+            style={{ marginLeft: '1rem', padding: '0.25rem 0.75rem', fontSize: '0.75rem' }}
+          >
+            Log Out
+          </button>
         </div>
       </div>
     </header>

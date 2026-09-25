@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { Session } from "@supabase/supabase-js";
 import { Users, Settings, CreditCard } from "lucide-react";
 import { OrganizationProvider } from "./context/OrganizationProvider";
 import { useOrganization } from "./context/useOrganization";
@@ -6,6 +7,8 @@ import { AppShell } from "./components/layout/AppShell";
 import { MembersTab } from "./components/settings/MembersTab";
 import { GeneralSettingsTab } from "./components/settings/GeneralSettingsTab";
 import { CreateOrgModal } from "./components/CreateOrgModal";
+import { supabase } from "./lib/supabase";
+import { AuthScreen } from "./components/AuthScreen";
 
 const AppContent: React.FC = () => {
   const { activeOrg, members } = useOrganization();
@@ -75,6 +78,35 @@ const AppContent: React.FC = () => {
 };
 
 export const App: React.FC = () => {
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // 1. Check if the user is already logged in when the app loads
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setLoading(false);
+    });
+
+    // 2. Listen for login/logout events and update the UI instantly!
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Show a blank screen or spinner while checking the session
+  if (loading) {
+    return <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Loading...</div>;
+  }
+
+  // If they aren't logged in, show our new Auth Screen!
+  if (!session) {
+    return <AuthScreen />;
+  }
+
+  // If they are logged in, show the actual application!
   return (
     <OrganizationProvider>
       <AppContent />
