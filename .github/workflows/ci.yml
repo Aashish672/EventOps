@@ -65,5 +65,14 @@ jobs:
       - name: Run ESLint
         run: npm run --prefix frontend lint
 
+      - name: Run Vitest
+        run: npm run --prefix frontend test
+        env:
+          VITE_SUPABASE_URL: "https://test-project.supabase.co"
+          VITE_SUPABASE_ANON_KEY: "dummy-key"
+
       - name: TypeScript & Production Build Check
         run: npm run --prefix frontend build
+        env:
+          VITE_SUPABASE_URL: "https://test-project.supabase.co"
+          VITE_SUPABASE_ANON_KEY: "dummy-key"
