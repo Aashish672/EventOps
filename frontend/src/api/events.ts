@@ -8,12 +8,12 @@ export async function fetchEvents(): Promise<Event[]> {
   const response = await fetch(`${API_BASE_URL}/api/events/`, {
     method: "GET",
     headers: await getCommonHeaders(),
+    credentials: "include",
   });
-
   if (!response.ok) {
-    throw new Error(`Failed to fetch events (HTTP ${response.status})`);
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || `Failed to fetch events (HTTP ${response.status})`);
   }
-
   return response.json();
 }
 
@@ -24,12 +24,12 @@ export async function fetchEvent(id: string): Promise<Event> {
   const response = await fetch(`${API_BASE_URL}/api/events/${id}/`, {
     method: "GET",
     headers: await getCommonHeaders(),
+    credentials: "include",
   });
-
   if (!response.ok) {
-    throw new Error(`Failed to fetch event (HTTP ${response.status})`);
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || `Failed to fetch event (HTTP ${response.status})`);
   }
-
   return response.json();
 }
 
@@ -40,14 +40,13 @@ export async function createEvent(payload: Partial<Event>): Promise<Event> {
   const response = await fetch(`${API_BASE_URL}/api/events/`, {
     method: "POST",
     headers: await getCommonHeaders(),
+    credentials: "include",
     body: JSON.stringify(payload),
   });
-
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.detail || "Failed to create event");
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || `Failed to create event (HTTP ${response.status})`);
   }
-
   return response.json();
 }
 
@@ -58,14 +57,13 @@ export async function updateEvent(id: string, payload: Partial<Event>): Promise<
   const response = await fetch(`${API_BASE_URL}/api/events/${id}/`, {
     method: "PATCH",
     headers: await getCommonHeaders(),
+    credentials: "include",
     body: JSON.stringify(payload),
   });
-
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.detail || "Failed to update event");
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || `Failed to update event (HTTP ${response.status})`);
   }
-
   return response.json();
 }
 
@@ -76,9 +74,10 @@ export async function deleteEvent(id: string): Promise<void> {
   const response = await fetch(`${API_BASE_URL}/api/events/${id}/`, {
     method: "DELETE",
     headers: await getCommonHeaders(),
+    credentials: "include",
   });
-
   if (!response.ok) {
-    throw new Error(`Failed to delete event (HTTP ${response.status})`);
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || `Failed to delete event (HTTP ${response.status})`);
   }
 }

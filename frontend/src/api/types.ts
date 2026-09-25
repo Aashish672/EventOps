@@ -1,96 +1,124 @@
+/**
+ * Shared TypeScript types for the EventOps frontend.
+ * These interfaces mirror the Django REST Framework serializer fields EXACTLY.
+ *
+ * Source of truth:
+ *   - backend/apps/events/serializers.py
+ *   - backend/apps/vendors/serializers.py
+ */
+
+// ─── Events ──────────────────────────────────────────────────────────────────
+
 export interface Event {
   id: string;
-  organization: string; // UUID
+  organization: string;
   name: string;
-  event_type: string;
-  status: "planning" | "confirmed" | "in_progress" | "completed" | "cancelled";
-  venue_name: string;
-  event_date: string;
-  expected_guest_count: number;
-  total_budget: string; // Decimal string
-  primary_planner: number | null;
-  client_share_token: string;
+  description: string;
+  start_date: string;
+  end_date: string;
+  status: "draft" | "planning" | "active" | "completed" | "cancelled";
+  assigned_planner: number | null;
   created_at: string;
   updated_at: string;
 }
 
+// ─── Tasks ───────────────────────────────────────────────────────────────────
+
 export interface Task {
   id: string;
-  event: string; // UUID
+  event: string;
   title: string;
   description: string;
-  status: "todo" | "in_progress" | "blocked" | "done";
-  assignee: number | null;
   due_date: string | null;
-  depends_on: string[]; // UUIDs
-  created_by_agent: boolean;
+  status: "todo" | "in_progress" | "done";
+  assigned_to: number | null;
   created_at: string;
+  updated_at: string;
+}
+
+// ─── Budget ──────────────────────────────────────────────────────────────────
+
+export interface BudgetLineItem {
+  id: string;
+  category: string;
+  event: string;
+  description: string;
+  estimated_cost: string;
+  actual_cost: string;
+  is_paid: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface BudgetCategory {
   id: string;
   event: string;
   name: string;
-  planned_amount: string; // Decimal string
+  allocated_amount: string;
+  line_items: BudgetLineItem[];
+  created_at: string;
+  updated_at: string;
 }
 
-export interface BudgetLineItem {
-  id: string;
-  category: string;
-  vendor: string | null;
-  description: string;
-  planned_amount: string;
-  actual_amount: string;
-  paid: boolean;
-  created_at: string;
-}
+// ─── Vendors ─────────────────────────────────────────────────────────────────
 
 export interface Vendor {
   id: string;
   organization: string;
   name: string;
-  category: "venue" | "catering" | "decor" | "photography" | "entertainment" | "transport" | "other";
-  contact_name: string;
-  contact_email: string;
-  contact_phone: string;
-  avg_rating: string;
+  category: "venue" | "catering" | "florist" | "photography" | "entertainment" | "other";
+  email: string;
+  phone: string;
+  website: string;
+  point_of_contact: string;
   notes: string;
   created_at: string;
+  updated_at: string;
 }
 
 export interface VendorBooking {
   id: string;
   event: string;
   vendor: string;
-  status: "inquired" | "quoted" | "contracted" | "confirmed" | "cancelled";
-  quoted_amount: string | null;
-  contract_terms: Record<string, unknown>;
+  status: "inquiry" | "contract_sent" | "booked" | "rejected";
+  agreed_price: string | null;
+  contract_notes: string;
   created_at: string;
+  updated_at: string;
 }
+
+// ─── Guests ──────────────────────────────────────────────────────────────────
 
 export interface GuestHousehold {
   id: string;
   event: string;
   name: string;
-  max_size: number;
+  address: string;
+  email: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Guest {
   id: string;
   household: string;
-  full_name: string;
-  rsvp_status: "pending" | "yes" | "no" | "maybe";
-  dietary_notes: string;
-  accessibility_notes: string;
+  event: string;
+  first_name: string;
+  last_name: string;
+  rsvp_status: "pending" | "attending" | "declined";
+  dietary_restrictions: string;
+  created_at: string;
+  updated_at: string;
 }
+
+// ─── Documents ───────────────────────────────────────────────────────────────
 
 export interface Document {
   id: string;
   event: string;
-  vendor_booking: string | null;
-  doc_type: "contract" | "quote" | "floor_plan" | "other";
-  file_path: string;
-  version: number;
+  title: string;
+  file_url: string;
   uploaded_by: number | null;
-  uploaded_at: string;
+  created_at: string;
+  updated_at: string;
 }
