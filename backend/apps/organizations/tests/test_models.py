@@ -34,7 +34,9 @@ def test_organization_slug_uniqueness():
 @pytest.mark.django_db
 def test_create_membership_with_role():
     """Verify that a User can be linked to an Organization with a role."""
-    user = User.objects.create_user(username="sarah_planner", password="testpassword123")
+    user = User.objects.create_user(
+        username="sarah_planner", password="testpassword123"
+    )
     org = Organization.objects.create(name="Starlight Events", slug="starlight-events")
 
     membership = Membership.objects.create(

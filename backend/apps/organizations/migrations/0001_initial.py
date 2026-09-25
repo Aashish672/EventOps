@@ -7,7 +7,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
@@ -16,33 +15,91 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='Organization',
+            name="Organization",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('name', models.CharField(max_length=255)),
-                ('slug', models.SlugField(unique=True)),
-                ('plan', models.CharField(choices=[('free', 'Free'), ('pro', 'Pro'), ('agency', 'Agency')], default='free', max_length=20)),
-                ('stripe_customer_id', models.CharField(blank=True, max_length=255, null=True)),
-                ('stripe_subscription_id', models.CharField(blank=True, max_length=255, null=True)),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                ("name", models.CharField(max_length=255)),
+                ("slug", models.SlugField(unique=True)),
+                (
+                    "plan",
+                    models.CharField(
+                        choices=[
+                            ("free", "Free"),
+                            ("pro", "Pro"),
+                            ("agency", "Agency"),
+                        ],
+                        default="free",
+                        max_length=20,
+                    ),
+                ),
+                (
+                    "stripe_customer_id",
+                    models.CharField(blank=True, max_length=255, null=True),
+                ),
+                (
+                    "stripe_subscription_id",
+                    models.CharField(blank=True, max_length=255, null=True),
+                ),
             ],
             options={
-                'ordering': ('-created_at',),
+                "ordering": ("-created_at",),
             },
         ),
         migrations.CreateModel(
-            name='Membership',
+            name="Membership",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('role', models.CharField(choices=[('owner', 'Owner'), ('planner', 'Planner'), ('coordinator', 'Coordinator'), ('viewer', 'Viewer')], max_length=20)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='memberships', to=settings.AUTH_USER_MODEL)),
-                ('organization', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='memberships', to='organizations.organization')),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                (
+                    "role",
+                    models.CharField(
+                        choices=[
+                            ("owner", "Owner"),
+                            ("planner", "Planner"),
+                            ("coordinator", "Coordinator"),
+                            ("viewer", "Viewer"),
+                        ],
+                        max_length=20,
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "user",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="memberships",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    "organization",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="memberships",
+                        to="organizations.organization",
+                    ),
+                ),
             ],
             options={
-                'ordering': ('-created_at',),
-                'unique_together': {('organization', 'user')},
+                "ordering": ("-created_at",),
+                "unique_together": {("organization", "user")},
             },
         ),
     ]
