@@ -1,8 +1,8 @@
 import { Calendar, Settings, Users } from "lucide-react";
 
 export interface SidebarProps {
-  currentTab: "members" | "general";
-  onTabChange: (tab: "members" | "general") => void;
+  currentTab: "events" | "members" | "general";
+  onTabChange: (tab: "events" | "members" | "general") => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange }) => {
@@ -10,13 +10,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange }) => 
     <aside className="sidebar">
       <div className="sidebar-nav">
         <div className="sidebar-section-title">Operations</div>
-        <div className="sidebar-item disabled" title="Event management arriving in Sprint 3">
+        <button
+          type="button"
+          className={`sidebar-item ${currentTab === "events" ? "active" : ""}`}
+          onClick={() => onTabChange("events")}
+        >
           <div className="sidebar-item-left">
             <Calendar size={16} />
             <span>Events</span>
           </div>
-          <span className="soon-pill">Sprint 3</span>
-        </div>
+        </button>
 
         <div className="sidebar-section-title" style={{ marginTop: "0.75rem" }}>
           Organization
