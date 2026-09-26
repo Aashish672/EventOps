@@ -16,7 +16,13 @@ import { MembersTab } from "./components/settings/MembersTab";
 import { GeneralSettingsTab } from "./components/settings/GeneralSettingsTab";
 import { CreateOrgModal } from "./components/CreateOrgModal";
 import { EventsDashboard } from "./components/events/EventsDashboard";
-import { EventDetailPlaceholder } from "./components/events/EventDetailPlaceholder";
+import { EventProvider } from "./context/EventProvider";
+import { EventLayout } from "./components/events/EventLayout";
+import { EventOverviewTab } from "./components/events/tabs/EventOverviewTab";
+import { EventTimelineTab } from "./components/events/tabs/EventTimelineTab";
+import { EventBudgetTab } from "./components/events/tabs/EventBudgetTab";
+import { EventGuestsTab } from "./components/events/tabs/EventGuestsTab";
+import { EventVendorsTab } from "./components/events/tabs/EventVendorsTab";
 import { supabase } from "./lib/supabase";
 import { AuthScreen } from "./components/AuthScreen";
 
@@ -98,7 +104,21 @@ const AppContent: React.FC = () => {
       <Routes>
         <Route path="/" element={<Navigate to="/events" replace />} />
         <Route path="/events" element={<EventsDashboard />} />
-        <Route path="/events/:eventId" element={<EventDetailPlaceholder />} />
+        <Route
+          path="/events/:eventId"
+          element={
+            <EventProvider>
+              <EventLayout />
+            </EventProvider>
+          }
+        >
+          <Route index element={<EventOverviewTab />} />
+          <Route path="overview" element={<EventOverviewTab />} />
+          <Route path="timeline" element={<EventTimelineTab />} />
+          <Route path="budget" element={<EventBudgetTab />} />
+          <Route path="guests" element={<EventGuestsTab />} />
+          <Route path="vendors" element={<EventVendorsTab />} />
+        </Route>
         <Route path="/settings/members" element={<SettingsView tab="members" />} />
         <Route path="/settings/general" element={<SettingsView tab="general" />} />
         <Route path="*" element={<Navigate to="/events" replace />} />

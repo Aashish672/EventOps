@@ -25,6 +25,8 @@ export function useHouseholds(eventId: string) {
   });
 }
 
+export const useGuestHouseholds = useHouseholds;
+
 export function useCreateHousehold(eventId: string) {
   const queryClient = useQueryClient();
   return useMutation({
