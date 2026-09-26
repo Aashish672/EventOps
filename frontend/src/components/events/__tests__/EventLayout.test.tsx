@@ -21,6 +21,9 @@ vi.mock("../../../hooks/useEvents", () => ({
 
 vi.mock("../../../hooks/useTasks", () => ({
   useTasks: vi.fn(),
+  useCreateTask: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdateTask: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteTask: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 vi.mock("../../../hooks/useBudgets", () => ({
