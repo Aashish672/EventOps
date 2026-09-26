@@ -13,7 +13,7 @@ import {
 import { useEventContext } from "../../../context/useEventContext";
 import { useTasks } from "../../../hooks/useTasks";
 import { useBudgetCategories } from "../../../hooks/useBudgets";
-import { useGuestHouseholds } from "../../../hooks/useGuests";
+import { useHouseholds } from "../../../hooks/useGuests";
 import { useVendorBookings } from "../../../hooks/useVendors";
 
 export const EventOverviewTab: React.FC = () => {
@@ -23,7 +23,7 @@ export const EventOverviewTab: React.FC = () => {
   // Queries for live metrics
   const { data: tasks = [] } = useTasks(eventId);
   const { data: budgetCategories = [] } = useBudgetCategories(eventId);
-  const { data: households = [] } = useGuestHouseholds(eventId);
+  const { data: households = [] } = useHouseholds(eventId);
   const { data: vendorBookings = [] } = useVendorBookings(eventId);
 
   if (!event) return null;

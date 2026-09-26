@@ -18,6 +18,10 @@ function formatDateRange(startDateStr: string, endDateStr: string): string {
     const start = new Date(startDateStr);
     const end = new Date(endDateStr);
 
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return `${startDateStr} - ${endDateStr}`;
+    }
+
     const startFormatted = start.toLocaleDateString(undefined, {
       month: "short",
       day: "numeric",
@@ -98,6 +102,8 @@ export const EventLayout: React.FC = () => {
 
   const dateDisplay = formatDateRange(event.start_date, event.end_date);
 
+  const cleanPath = location.pathname.replace(/\/+$/, "");
+
   // Tab definitions
   const tabs = [
     {
@@ -105,35 +111,35 @@ export const EventLayout: React.FC = () => {
       label: "Overview",
       icon: <LayoutDashboard size={16} />,
       path: `/events/${eventId}/overview`,
-      activeMatch: location.pathname === `/events/${eventId}` || location.pathname.endsWith("/overview"),
+      activeMatch: cleanPath === `/events/${eventId}` || cleanPath.endsWith("/overview"),
     },
     {
       id: "timeline",
       label: "Timeline & Tasks",
       icon: <CheckSquare size={16} />,
       path: `/events/${eventId}/timeline`,
-      activeMatch: location.pathname.endsWith("/timeline"),
+      activeMatch: cleanPath.endsWith("/timeline"),
     },
     {
       id: "budget",
       label: "Budget Tracker",
       icon: <DollarSign size={16} />,
       path: `/events/${eventId}/budget`,
-      activeMatch: location.pathname.endsWith("/budget"),
+      activeMatch: cleanPath.endsWith("/budget"),
     },
     {
       id: "guests",
       label: "Guests",
       icon: <Users size={16} />,
       path: `/events/${eventId}/guests`,
-      activeMatch: location.pathname.endsWith("/guests"),
+      activeMatch: cleanPath.endsWith("/guests"),
     },
     {
       id: "vendors",
       label: "Vendors",
       icon: <Store size={16} />,
       path: `/events/${eventId}/vendors`,
-      activeMatch: location.pathname.endsWith("/vendors"),
+      activeMatch: cleanPath.endsWith("/vendors"),
     },
   ];
 

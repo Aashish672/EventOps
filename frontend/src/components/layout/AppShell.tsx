@@ -46,16 +46,15 @@ export const AppShell: React.FC<AppShellProps> = ({
   const eventId = eventMatch ? eventMatch[1] : null;
   const isEventDetail = Boolean(eventId);
 
-  const subTab = location.pathname.endsWith("/timeline")
+  const cleanPath = location.pathname.replace(/\/+$/, "");
+  const subTab = cleanPath.endsWith("/timeline")
     ? "Timeline & Tasks"
-    : location.pathname.endsWith("/budget")
+    : cleanPath.endsWith("/budget")
     ? "Budget Tracker"
-    : location.pathname.endsWith("/guests")
+    : cleanPath.endsWith("/guests")
     ? "Guests"
-    : location.pathname.endsWith("/vendors")
+    : cleanPath.endsWith("/vendors")
     ? "Vendors"
-    : location.pathname.endsWith("/overview")
-    ? "Overview"
     : null;
 
   return (
