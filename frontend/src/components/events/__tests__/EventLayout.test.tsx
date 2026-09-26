@@ -28,6 +28,10 @@ vi.mock("../../../hooks/useTasks", () => ({
 
 vi.mock("../../../hooks/useBudgets", () => ({
   useBudgetCategories: vi.fn(),
+  useUpdateBudgetLineItem: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
 }));
 
 vi.mock("../../../hooks/useGuests", () => ({

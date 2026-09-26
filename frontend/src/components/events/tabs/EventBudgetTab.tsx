@@ -1,19 +1,111 @@
 import React from "react";
-import { DollarSign, Plus, Layers } from "lucide-react";
+import { DollarSign, Plus, Layers, Search, Filter, ChevronsUpDown } from "lucide-react";
 import { useEventContext } from "../../../context/useEventContext";
-import { useBudgetCategories } from "../../../hooks/useBudgets";
+import { useBudgetCategories, useUpdateBudgetLineItem } from "../../../hooks/useBudgets";
 import { calculateBudgetSummary } from "../budget/budgetUtils";
 import { BudgetSummaryCards } from "../budget/BudgetSummaryCards";
+import { BudgetCategoryAccordion } from "../budget/BudgetCategoryAccordion";
+import { BudgetLineItem } from "../../../api/types";
 import "../budget/budget.css";
 
 export const EventBudgetTab: React.FC = () => {
   const { eventId, event } = useEventContext();
   const { data: categories = [], isLoading } = useBudgetCategories(eventId);
+  const updateLineItemMutation = useUpdateBudgetLineItem(eventId);
+
+  const [expandedIds, setExpandedIds] = React.useState<Set<string>>(new Set());
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [paymentFilter, setPaymentFilter] = React.useState<"all" | "paid" | "unpaid">("all");
+  const [updatingItemId, setUpdatingItemId] = React.useState<string | null>(null);
+
+  // Initialize all categories as expanded when data first loads
+  React.useEffect(() => {
+    if (categories.length > 0) {
+      setExpandedIds((prev) => {
+        if (prev.size === 0) {
+          return new Set(categories.map((c) => c.id));
+        }
+        return prev;
+      });
+    }
+  }, [categories]);
 
   const summary = calculateBudgetSummary(categories);
 
+  const handleToggleExpand = (categoryId: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(categoryId)) {
+        next.delete(categoryId);
+      } else {
+        next.add(categoryId);
+      }
+      return next;
+    });
+  };
+
+  const handleToggleAll = () => {
+    if (expandedIds.size === categories.length) {
+      setExpandedIds(new Set());
+    } else {
+      setExpandedIds(new Set(categories.map((c) => c.id)));
+    }
+  };
+
+  const handleTogglePaid = async (item: BudgetLineItem) => {
+    setUpdatingItemId(item.id);
+    try {
+      await updateLineItemMutation.mutateAsync({
+        id: item.id,
+        payload: { is_paid: !item.is_paid },
+      });
+    } catch {
+      // Invalidation handled by hook onSuccess; errors caught to prevent unhandled rejections
+    } finally {
+      setUpdatingItemId(null);
+    }
+  };
+
+  const handleClearFilters = () => {
+    setSearchQuery("");
+    setPaymentFilter("all");
+  };
+
+  // Filter categories and line items based on search and payment status
+  const filteredCategories = React.useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+
+    return categories
+      .map((cat) => {
+        const catMatches = !query || cat.name.toLowerCase().includes(query);
+
+        const filteredItems = (cat.line_items || []).filter((item) => {
+          // Payment status filter
+          if (paymentFilter === "paid" && !item.is_paid) return false;
+          if (paymentFilter === "unpaid" && item.is_paid) return false;
+
+          // Search query filter (if category matched, show all items matching payment; otherwise item must match)
+          if (!query || catMatches) return true;
+          return item.description.toLowerCase().includes(query);
+        });
+
+        // Keep category if it matches search or has matching line items
+        if (catMatches || filteredItems.length > 0) {
+          return {
+            ...cat,
+            line_items: filteredItems,
+          };
+        }
+        return null;
+      })
+      .filter((cat): cat is typeof categories[number] => cat !== null);
+  }, [categories, searchQuery, paymentFilter]);
+
+  const allExpanded = categories.length > 0 && expandedIds.size === categories.length;
+
   return (
     <div className="event-tab-pane">
+      {/* Top Header */}
       <div className="tab-pane-header">
         <div>
           <h2 className="tab-pane-title">Budget Tracker</h2>
@@ -49,7 +141,7 @@ export const EventBudgetTab: React.FC = () => {
           </p>
           <div className="epic-badge-note">
             <Layers size={13} style={{ marginRight: 4 }} />
-            Ready for Sub-task 3.4.2 & 3.4.3: Interactive Categories & Line Items
+            Ready for Sub-task 3.4.3: Create Categories & Line Items
           </div>
         </div>
       ) : (
@@ -57,21 +149,81 @@ export const EventBudgetTab: React.FC = () => {
           {/* Sub-Task 3.4.1: Budget KPI Overview Cards */}
           <BudgetSummaryCards summary={summary} />
 
-          {/* Sub-Task 3.4.2 will place the interactive Category & Line Items Table here */}
-          <div className="budget-categories-placeholder" style={{ marginTop: "1rem" }}>
-            <div className="budget-preview-box">
-              <div className="budget-preview-categories">
-                {categories.map((cat) => (
-                  <div key={cat.id} className="budget-preview-row">
-                    <span style={{ fontWeight: 600 }}>{cat.name}</span>
-                    <span style={{ color: "var(--text-secondary)" }}>
-                      {cat.line_items?.length || 0} line {cat.line_items?.length === 1 ? "item" : "items"}
-                    </span>
-                  </div>
-                ))}
+          {/* Sub-Task 3.4.2: Toolbar & Filters */}
+          <div className="budget-toolbar">
+            <div className="budget-toolbar-left">
+              {/* Search Box */}
+              <div className="budget-search-wrap">
+                <Search size={14} className="budget-search-icon" />
+                <input
+                  type="text"
+                  className="budget-search-input"
+                  placeholder="Search categories or items..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  aria-label="Search categories or items"
+                />
+              </div>
+
+              {/* Payment Status Filter */}
+              <div className="budget-filter-wrap">
+                <select
+                  className="budget-filter-select"
+                  value={paymentFilter}
+                  onChange={(e) => setPaymentFilter(e.target.value as "all" | "paid" | "unpaid")}
+                  aria-label="Filter expenses by payment status"
+                >
+                  <option value="all">All Expenses</option>
+                  <option value="paid">Paid Only</option>
+                  <option value="unpaid">Unpaid Only</option>
+                </select>
               </div>
             </div>
+
+            <div className="budget-toolbar-right">
+              <button
+                type="button"
+                className="btn-expand-all"
+                onClick={handleToggleAll}
+                aria-label={allExpanded ? "Collapse all categories" : "Expand all categories"}
+              >
+                <ChevronsUpDown size={14} />
+                <span>{allExpanded ? "Collapse All" : "Expand All"}</span>
+              </button>
+            </div>
           </div>
+
+          {/* Nested Categories Accordion List */}
+          {filteredCategories.length === 0 ? (
+            <div className="event-state-box empty-state">
+              <div className="event-state-icon">
+                <Filter size={24} color="var(--text-muted)" />
+              </div>
+              <h3>No Matching Expenses</h3>
+              <p>No categories or line items matched your current filter criteria.</p>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={handleClearFilters}
+                style={{ marginTop: "0.5rem" }}
+              >
+                Clear Filters
+              </button>
+            </div>
+          ) : (
+            <div className="budget-categories-list" role="region" aria-label="Budget Categories Table">
+              {filteredCategories.map((cat) => (
+                <BudgetCategoryAccordion
+                  key={cat.id}
+                  category={cat}
+                  isExpanded={expandedIds.has(cat.id)}
+                  onToggleExpand={handleToggleExpand}
+                  onTogglePaid={handleTogglePaid}
+                  updatingItemId={updatingItemId}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

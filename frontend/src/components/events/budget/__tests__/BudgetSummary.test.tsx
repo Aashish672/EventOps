@@ -11,6 +11,10 @@ import { BudgetCategory, Event } from "../../../../api/types";
 // Mock useBudgets hook
 vi.mock("../../../../hooks/useBudgets", () => ({
   useBudgetCategories: vi.fn(),
+  useUpdateBudgetLineItem: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
 }));
 
 import { useBudgetCategories } from "../../../../hooks/useBudgets";
