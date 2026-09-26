@@ -42,8 +42,20 @@ export const AppShell: React.FC<AppShellProps> = ({
     }
   };
 
-  const isEventDetail =
-    location.pathname.startsWith("/events/") && location.pathname !== "/events";
+  const eventMatch = location.pathname.match(/^\/events\/([^/]+)/);
+  const eventId = eventMatch ? eventMatch[1] : null;
+  const isEventDetail = Boolean(eventId);
+
+  const cleanPath = location.pathname.replace(/\/+$/, "");
+  const subTab = cleanPath.endsWith("/timeline")
+    ? "Timeline & Tasks"
+    : cleanPath.endsWith("/budget")
+    ? "Budget Tracker"
+    : cleanPath.endsWith("/guests")
+    ? "Guests"
+    : cleanPath.endsWith("/vendors")
+    ? "Vendors"
+    : null;
 
   return (
     <div className="app-layout">
@@ -67,7 +79,21 @@ export const AppShell: React.FC<AppShellProps> = ({
                   Events
                 </button>
                 <ChevronRight size={12} color="var(--text-muted)" />
-                <span className="breadcrumb-current">Workspace</span>
+                {subTab ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/events/${eventId}`)}
+                      className="breadcrumb-link"
+                    >
+                      Workspace
+                    </button>
+                    <ChevronRight size={12} color="var(--text-muted)" />
+                    <span className="breadcrumb-current">{subTab}</span>
+                  </>
+                ) : (
+                  <span className="breadcrumb-current">Workspace</span>
+                )}
               </>
             ) : (
               <span className="breadcrumb-current">
