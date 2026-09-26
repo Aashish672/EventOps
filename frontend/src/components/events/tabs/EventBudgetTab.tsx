@@ -1,16 +1,16 @@
 import React from "react";
-import { DollarSign, Plus, Sparkles } from "lucide-react";
+import { DollarSign, Plus, Layers } from "lucide-react";
 import { useEventContext } from "../../../context/useEventContext";
 import { useBudgetCategories } from "../../../hooks/useBudgets";
+import { calculateBudgetSummary } from "../budget/budgetUtils";
+import { BudgetSummaryCards } from "../budget/BudgetSummaryCards";
+import "../budget/budget.css";
 
 export const EventBudgetTab: React.FC = () => {
   const { eventId, event } = useEventContext();
   const { data: categories = [], isLoading } = useBudgetCategories(eventId);
 
-  const totalAllocated = categories.reduce(
-    (sum, c) => sum + (parseFloat(c.allocated_amount) || 0),
-    0
-  );
+  const summary = calculateBudgetSummary(categories);
 
   return (
     <div className="event-tab-pane">
@@ -24,44 +24,53 @@ export const EventBudgetTab: React.FC = () => {
         <button
           type="button"
           className="btn btn-primary"
-          title="Create category functionality arriving in Epic 3.4"
+          title="Add category functionality arriving in Sub-task 3.4.3"
           disabled
         >
           <Plus size={15} style={{ marginRight: 6 }} />
           Add Category
-          <span className="soon-pill" style={{ marginLeft: 6 }}>Epic 3.4</span>
         </button>
       </div>
 
       {isLoading ? (
-        <div className="placeholder-pulse" style={{ height: 160, borderRadius: 8, background: "var(--bg-subtle)" }} />
+        <div
+          className="placeholder-pulse"
+          style={{ height: 160, borderRadius: 8, background: "var(--bg-subtle)" }}
+        />
       ) : categories.length === 0 ? (
         <div className="event-state-box empty-state">
           <div className="event-state-icon">
-            <DollarSign size={28} color="#16a34a" />
+            <DollarSign size={32} color="#16a34a" />
           </div>
-          <h3>Budget Not Yet Allocated</h3>
+          <h3>No Budget Categories Yet</h3>
           <p>
-            The interactive budget tables, category allocations, and line-item cost trackers will be activated in <strong>Epic 3.4</strong>.
+            Start organizing event expenses by allocating your total budget into categories
+            such as Venue, Catering, Audio/Visual, and Decor.
           </p>
           <div className="epic-badge-note">
-            <Sparkles size={13} style={{ marginRight: 4 }} />
-            Ready for Epic 3.4: Budget Tracker UI
+            <Layers size={13} style={{ marginRight: 4 }} />
+            Ready for Sub-task 3.4.2 & 3.4.3: Interactive Categories & Line Items
           </div>
         </div>
       ) : (
-        <div className="budget-preview-box">
-          <div className="budget-preview-total">
-            <span>Total Allocated Budget:</span>
-            <strong>${totalAllocated.toLocaleString(undefined, { minimumFractionDigits: 2 })}</strong>
-          </div>
-          <div className="budget-preview-categories">
-            {categories.map((cat) => (
-              <div key={cat.id} className="budget-preview-row">
-                <span>{cat.name}</span>
-                <span>${parseFloat(cat.allocated_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+        <div className="budget-content-wrap">
+          {/* Sub-Task 3.4.1: Budget KPI Overview Cards */}
+          <BudgetSummaryCards summary={summary} />
+
+          {/* Sub-Task 3.4.2 will place the interactive Category & Line Items Table here */}
+          <div className="budget-categories-placeholder" style={{ marginTop: "1rem" }}>
+            <div className="budget-preview-box">
+              <div className="budget-preview-categories">
+                {categories.map((cat) => (
+                  <div key={cat.id} className="budget-preview-row">
+                    <span style={{ fontWeight: 600 }}>{cat.name}</span>
+                    <span style={{ color: "var(--text-secondary)" }}>
+                      {cat.line_items?.length || 0} line {cat.line_items?.length === 1 ? "item" : "items"}
+                    </span>
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
           </div>
         </div>
       )}
