@@ -30,7 +30,7 @@ class Vendor(TenantModel):
     notes = models.TextField(blank=True)
 
     class Meta:
-        ordering = ("name",)
+        ordering = ["name"]
         # Ensure we don't have duplicate vendor names within the same organization
         constraints = (
             models.UniqueConstraint(
