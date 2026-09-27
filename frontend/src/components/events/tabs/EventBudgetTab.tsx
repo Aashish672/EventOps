@@ -4,6 +4,7 @@ import { useEventContext } from "../../../context/useEventContext";
 import {
   useBudgetCategories,
   useUpdateBudgetLineItem,
+  useCreateBudgetLineItem,
   useCreateBudgetCategory,
   useUpdateBudgetCategory,
 } from "../../../hooks/useBudgets";
@@ -11,6 +12,7 @@ import { calculateBudgetSummary } from "../budget/budgetUtils";
 import { BudgetSummaryCards } from "../budget/BudgetSummaryCards";
 import { BudgetCategoryAccordion } from "../budget/BudgetCategoryAccordion";
 import { BudgetCategoryModal } from "../budget/BudgetCategoryModal";
+import { BudgetLineItemModal } from "../budget/BudgetLineItemModal";
 import { BudgetCategory, BudgetLineItem } from "../../../api/types";
 import "../budget/budget.css";
 
@@ -18,6 +20,7 @@ export const EventBudgetTab: React.FC = () => {
   const { eventId, event } = useEventContext();
   const { data: categories = [], isLoading } = useBudgetCategories(eventId);
   const updateLineItemMutation = useUpdateBudgetLineItem(eventId);
+  const createLineItemMutation = useCreateBudgetLineItem(eventId);
   const createCategoryMutation = useCreateBudgetCategory(eventId);
   const updateCategoryMutation = useUpdateBudgetCategory(eventId);
 
@@ -27,6 +30,9 @@ export const EventBudgetTab: React.FC = () => {
   const [updatingItemId, setUpdatingItemId] = React.useState<string | null>(null);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = React.useState(false);
   const [editingCategory, setEditingCategory] = React.useState<BudgetCategory | null>(null);
+  const [isItemModalOpen, setIsItemModalOpen] = React.useState(false);
+  const [editingItem, setEditingItem] = React.useState<BudgetLineItem | null>(null);
+  const [defaultItemCategoryId, setDefaultItemCategoryId] = React.useState<string | undefined>(undefined);
 
   // Initialize all categories as expanded when data first loads
   React.useEffect(() => {
@@ -99,6 +105,38 @@ export const EventBudgetTab: React.FC = () => {
       });
     } else {
       await createCategoryMutation.mutateAsync({
+        ...data,
+        event: eventId,
+      });
+    }
+  };
+
+  const handleOpenCreateItem = (category?: BudgetCategory) => {
+    setEditingItem(null);
+    setDefaultItemCategoryId(category?.id);
+    setIsItemModalOpen(true);
+  };
+
+  const handleOpenEditItem = (item: BudgetLineItem) => {
+    setEditingItem(item);
+    setDefaultItemCategoryId(item.category);
+    setIsItemModalOpen(true);
+  };
+
+  const handleItemSubmit = async (data: {
+    category: string;
+    description: string;
+    estimated_cost: string;
+    actual_cost: string;
+    is_paid: boolean;
+  }) => {
+    if (editingItem) {
+      await updateLineItemMutation.mutateAsync({
+        id: editingItem.id,
+        payload: data,
+      });
+    } else {
+      await createLineItemMutation.mutateAsync({
         ...data,
         event: eventId,
       });
@@ -258,7 +296,9 @@ export const EventBudgetTab: React.FC = () => {
                   onToggleExpand={handleToggleExpand}
                   onTogglePaid={handleTogglePaid}
                   updatingItemId={updatingItemId}
+                  onAddItem={handleOpenCreateItem}
                   onEditCategory={handleOpenEditCategory}
+                  onEditItem={handleOpenEditItem}
                 />
               ))}
             </div>
@@ -273,6 +313,17 @@ export const EventBudgetTab: React.FC = () => {
         onSubmit={handleCategorySubmit}
         initialCategory={editingCategory}
         isSubmitting={createCategoryMutation.isPending || updateCategoryMutation.isPending}
+      />
+
+      {/* Line Item Create & Edit Modal */}
+      <BudgetLineItemModal
+        isOpen={isItemModalOpen}
+        onClose={() => setIsItemModalOpen(false)}
+        onSubmit={handleItemSubmit}
+        categories={categories}
+        initialItem={editingItem}
+        defaultCategoryId={defaultItemCategoryId}
+        isSubmitting={createLineItemMutation.isPending || updateLineItemMutation.isPending}
       />
     </div>
   );

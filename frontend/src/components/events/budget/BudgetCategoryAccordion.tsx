@@ -126,6 +126,7 @@ export const BudgetCategoryAccordion: React.FC<BudgetCategoryAccordionProps> = (
               className="btn btn-secondary btn-sm"
               onClick={() => onAddItem?.(category)}
               title={`Add item to ${category.name}`}
+              aria-label={`Add item to ${category.name}`}
             >
               <Plus size={13} style={{ marginRight: 4 }} />
               Add Item
