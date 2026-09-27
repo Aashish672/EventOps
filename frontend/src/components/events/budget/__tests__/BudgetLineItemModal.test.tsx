@@ -17,6 +17,8 @@ vi.mock("../../../../hooks/useBudgets", () => ({
   useCreateBudgetLineItem: () => ({ mutateAsync: mockCreateLineItem, isPending: false }),
   useCreateBudgetCategory: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdateBudgetCategory: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteBudgetCategory: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteBudgetLineItem: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 import { useBudgetCategories } from "../../../../hooks/useBudgets";

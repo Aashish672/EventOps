@@ -7,12 +7,15 @@ import {
   useCreateBudgetLineItem,
   useCreateBudgetCategory,
   useUpdateBudgetCategory,
+  useDeleteBudgetCategory,
+  useDeleteBudgetLineItem,
 } from "../../../hooks/useBudgets";
 import { calculateBudgetSummary } from "../budget/budgetUtils";
 import { BudgetSummaryCards } from "../budget/BudgetSummaryCards";
 import { BudgetCategoryAccordion } from "../budget/BudgetCategoryAccordion";
 import { BudgetCategoryModal } from "../budget/BudgetCategoryModal";
 import { BudgetLineItemModal } from "../budget/BudgetLineItemModal";
+import { DeleteBudgetModal, DeleteBudgetTarget } from "../budget/DeleteBudgetModal";
 import { BudgetCategory, BudgetLineItem } from "../../../api/types";
 import "../budget/budget.css";
 
@@ -23,6 +26,8 @@ export const EventBudgetTab: React.FC = () => {
   const createLineItemMutation = useCreateBudgetLineItem(eventId);
   const createCategoryMutation = useCreateBudgetCategory(eventId);
   const updateCategoryMutation = useUpdateBudgetCategory(eventId);
+  const deleteCategoryMutation = useDeleteBudgetCategory(eventId);
+  const deleteLineItemMutation = useDeleteBudgetLineItem(eventId);
 
   const [expandedIds, setExpandedIds] = React.useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -33,6 +38,7 @@ export const EventBudgetTab: React.FC = () => {
   const [isItemModalOpen, setIsItemModalOpen] = React.useState(false);
   const [editingItem, setEditingItem] = React.useState<BudgetLineItem | null>(null);
   const [defaultItemCategoryId, setDefaultItemCategoryId] = React.useState<string | undefined>(undefined);
+  const [deletingTarget, setDeletingTarget] = React.useState<DeleteBudgetTarget | null>(null);
 
   // Initialize all categories as expanded when data first loads
   React.useEffect(() => {
@@ -140,6 +146,22 @@ export const EventBudgetTab: React.FC = () => {
         ...data,
         event: eventId,
       });
+    }
+  };
+
+  const handleOpenDeleteCategory = (category: BudgetCategory) => {
+    setDeletingTarget({ type: "category", category });
+  };
+
+  const handleOpenDeleteItem = (item: BudgetLineItem) => {
+    setDeletingTarget({ type: "item", item });
+  };
+
+  const handleDeleteConfirm = async (target: { type: "category" | "item"; id: string }) => {
+    if (target.type === "category") {
+      await deleteCategoryMutation.mutateAsync(target.id);
+    } else {
+      await deleteLineItemMutation.mutateAsync(target.id);
     }
   };
 
@@ -299,6 +321,8 @@ export const EventBudgetTab: React.FC = () => {
                   onAddItem={handleOpenCreateItem}
                   onEditCategory={handleOpenEditCategory}
                   onEditItem={handleOpenEditItem}
+                  onDeleteCategory={handleOpenDeleteCategory}
+                  onDeleteItem={handleOpenDeleteItem}
                 />
               ))}
             </div>
@@ -324,6 +348,15 @@ export const EventBudgetTab: React.FC = () => {
         initialItem={editingItem}
         defaultCategoryId={defaultItemCategoryId}
         isSubmitting={createLineItemMutation.isPending || updateLineItemMutation.isPending}
+      />
+
+      {/* Delete Category or Line Item Modal */}
+      <DeleteBudgetModal
+        isOpen={Boolean(deletingTarget)}
+        target={deletingTarget}
+        onClose={() => setDeletingTarget(null)}
+        onConfirm={handleDeleteConfirm}
+        isDeleting={deleteCategoryMutation.isPending || deleteLineItemMutation.isPending}
       />
     </div>
   );
