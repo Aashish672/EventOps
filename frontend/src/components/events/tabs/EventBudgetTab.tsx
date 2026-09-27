@@ -1,22 +1,32 @@
 import React from "react";
-import { DollarSign, Plus, Layers, Search, Filter, ChevronsUpDown } from "lucide-react";
+import { DollarSign, Plus, Search, Filter, ChevronsUpDown } from "lucide-react";
 import { useEventContext } from "../../../context/useEventContext";
-import { useBudgetCategories, useUpdateBudgetLineItem } from "../../../hooks/useBudgets";
+import {
+  useBudgetCategories,
+  useUpdateBudgetLineItem,
+  useCreateBudgetCategory,
+  useUpdateBudgetCategory,
+} from "../../../hooks/useBudgets";
 import { calculateBudgetSummary } from "../budget/budgetUtils";
 import { BudgetSummaryCards } from "../budget/BudgetSummaryCards";
 import { BudgetCategoryAccordion } from "../budget/BudgetCategoryAccordion";
-import { BudgetLineItem } from "../../../api/types";
+import { BudgetCategoryModal } from "../budget/BudgetCategoryModal";
+import { BudgetCategory, BudgetLineItem } from "../../../api/types";
 import "../budget/budget.css";
 
 export const EventBudgetTab: React.FC = () => {
   const { eventId, event } = useEventContext();
   const { data: categories = [], isLoading } = useBudgetCategories(eventId);
   const updateLineItemMutation = useUpdateBudgetLineItem(eventId);
+  const createCategoryMutation = useCreateBudgetCategory(eventId);
+  const updateCategoryMutation = useUpdateBudgetCategory(eventId);
 
   const [expandedIds, setExpandedIds] = React.useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = React.useState("");
   const [paymentFilter, setPaymentFilter] = React.useState<"all" | "paid" | "unpaid">("all");
   const [updatingItemId, setUpdatingItemId] = React.useState<string | null>(null);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = React.useState(false);
+  const [editingCategory, setEditingCategory] = React.useState<BudgetCategory | null>(null);
 
   // Initialize all categories as expanded when data first loads
   React.useEffect(() => {
@@ -71,6 +81,30 @@ export const EventBudgetTab: React.FC = () => {
     setPaymentFilter("all");
   };
 
+  const handleOpenCreateCategory = () => {
+    setEditingCategory(null);
+    setIsCategoryModalOpen(true);
+  };
+
+  const handleOpenEditCategory = (cat: BudgetCategory) => {
+    setEditingCategory(cat);
+    setIsCategoryModalOpen(true);
+  };
+
+  const handleCategorySubmit = async (data: { name: string; allocated_amount: string }) => {
+    if (editingCategory) {
+      await updateCategoryMutation.mutateAsync({
+        id: editingCategory.id,
+        payload: data,
+      });
+    } else {
+      await createCategoryMutation.mutateAsync({
+        ...data,
+        event: eventId,
+      });
+    }
+  };
+
   // Filter categories and line items based on search and payment status
   const filteredCategories = React.useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -116,8 +150,7 @@ export const EventBudgetTab: React.FC = () => {
         <button
           type="button"
           className="btn btn-primary"
-          title="Add category functionality arriving in Sub-task 3.4.3"
-          disabled
+          onClick={handleOpenCreateCategory}
         >
           <Plus size={15} style={{ marginRight: 6 }} />
           Add Category
@@ -139,10 +172,15 @@ export const EventBudgetTab: React.FC = () => {
             Start organizing event expenses by allocating your total budget into categories
             such as Venue, Catering, Audio/Visual, and Decor.
           </p>
-          <div className="epic-badge-note">
-            <Layers size={13} style={{ marginRight: 4 }} />
-            Ready for Sub-task 3.4.3: Create Categories & Line Items
-          </div>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={handleOpenCreateCategory}
+            style={{ marginTop: "1rem" }}
+          >
+            <Plus size={15} style={{ marginRight: 6 }} />
+            Add First Category
+          </button>
         </div>
       ) : (
         <div className="budget-content-wrap">
@@ -220,12 +258,22 @@ export const EventBudgetTab: React.FC = () => {
                   onToggleExpand={handleToggleExpand}
                   onTogglePaid={handleTogglePaid}
                   updatingItemId={updatingItemId}
+                  onEditCategory={handleOpenEditCategory}
                 />
               ))}
             </div>
           )}
         </div>
       )}
+
+      {/* Category Create & Edit Modal */}
+      <BudgetCategoryModal
+        isOpen={isCategoryModalOpen}
+        onClose={() => setIsCategoryModalOpen(false)}
+        onSubmit={handleCategorySubmit}
+        initialCategory={editingCategory}
+        isSubmitting={createCategoryMutation.isPending || updateCategoryMutation.isPending}
+      />
     </div>
   );
 };
