@@ -42,6 +42,7 @@ vi.mock("../../../hooks/useBudgets", () => ({
 vi.mock("../../../hooks/useGuests", () => ({
   useHouseholds: vi.fn(),
   useGuestHouseholds: vi.fn(),
+  useGuests: vi.fn(),
 }));
 
 vi.mock("../../../hooks/useVendors", () => ({
@@ -51,7 +52,7 @@ vi.mock("../../../hooks/useVendors", () => ({
 import { useEvent } from "../../../hooks/useEvents";
 import { useTasks } from "../../../hooks/useTasks";
 import { useBudgetCategories } from "../../../hooks/useBudgets";
-import { useHouseholds, useGuestHouseholds } from "../../../hooks/useGuests";
+import { useHouseholds, useGuestHouseholds, useGuests } from "../../../hooks/useGuests";
 import { useVendorBookings } from "../../../hooks/useVendors";
 
 const mockEvent: Event = {
@@ -220,6 +221,7 @@ describe("EventLayout and Routing (Epic 3.2)", () => {
     (useBudgetCategories as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ data: mockBudgetCategories, isLoading: false });
     (useHouseholds as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ data: mockHouseholds, isLoading: false });
     (useGuestHouseholds as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ data: mockHouseholds, isLoading: false });
+    (useGuests as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ data: [], isLoading: false });
     (useVendorBookings as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ data: mockVendorBookings, isLoading: false });
   });
 

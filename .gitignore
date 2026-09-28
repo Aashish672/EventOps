@@ -95,3 +95,5 @@ redis_data/
 *~
 .DS_Store
 Thumbs.db
+.postman/
+postman/
