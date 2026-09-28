@@ -1,11 +1,18 @@
 import React from "react";
 import { Users, Plus, Search, ChevronsUpDown, Filter } from "lucide-react";
 import { useEventContext } from "../../../context/useEventContext";
-import { useHouseholds, useGuests, useUpdateGuest } from "../../../hooks/useGuests";
+import {
+  useHouseholds,
+  useGuests,
+  useUpdateGuest,
+  useCreateHousehold,
+  useUpdateHousehold,
+} from "../../../hooks/useGuests";
 import { Guest, GuestHousehold } from "../../../api/types";
 import { calculateGuestSummary } from "../guests/guestUtils";
 import { GuestSummaryCards } from "../guests/GuestSummaryCards";
 import { GuestHouseholdAccordion } from "../guests/GuestHouseholdAccordion";
+import { GuestHouseholdModal } from "../guests/GuestHouseholdModal";
 import "../guests/guests.css";
 
 interface EventGuestsTabProps {
@@ -18,8 +25,8 @@ interface EventGuestsTabProps {
 }
 
 export const EventGuestsTab: React.FC<EventGuestsTabProps> = ({
-  onAddHousehold,
-  onEditHousehold,
+  onAddHousehold: propOnAddHousehold,
+  onEditHousehold: propOnEditHousehold,
   onDeleteHousehold,
   onAddGuest,
   onEditGuest,
@@ -29,11 +36,17 @@ export const EventGuestsTab: React.FC<EventGuestsTabProps> = ({
   const { data: households = [], isLoading: isLoadingHouseholds } = useHouseholds(eventId);
   const { data: guests = [], isLoading: isLoadingGuests } = useGuests(eventId);
   const updateGuestMutation = useUpdateGuest(eventId);
+  const createHouseholdMutation = useCreateHousehold(eventId);
+  const updateHouseholdMutation = useUpdateHousehold(eventId);
 
   const [searchQuery, setSearchQuery] = React.useState("");
   const [rsvpFilter, setRsvpFilter] = React.useState<"all" | "attending" | "pending" | "declined">("all");
   const [expandedIds, setExpandedIds] = React.useState<Set<string>>(new Set());
   const [updatingGuestId, setUpdatingGuestId] = React.useState<string | null>(null);
+
+  // Household Modal state
+  const [isHouseholdModalOpen, setIsHouseholdModalOpen] = React.useState(false);
+  const [editingHousehold, setEditingHousehold] = React.useState<GuestHousehold | null>(null);
 
   // Initialize all households as expanded when data first loads
   React.useEffect(() => {
@@ -163,8 +176,49 @@ export const EventGuestsTab: React.FC<EventGuestsTabProps> = ({
 
   const isAllExpanded = households.length > 0 && expandedIds.size === households.length;
 
+  const handleOpenAddHousehold = () => {
+    if (propOnAddHousehold) {
+      propOnAddHousehold();
+    } else {
+      setEditingHousehold(null);
+      setIsHouseholdModalOpen(true);
+    }
+  };
+
+  const handleOpenEditHousehold = (household: GuestHousehold) => {
+    if (propOnEditHousehold) {
+      propOnEditHousehold(household);
+    } else {
+      setEditingHousehold(household);
+      setIsHouseholdModalOpen(true);
+    }
+  };
+
+  const handleHouseholdSubmit = async (data: { name: string; address?: string; email?: string }) => {
+    if (editingHousehold) {
+      await updateHouseholdMutation.mutateAsync({
+        id: editingHousehold.id,
+        payload: { ...data, event: eventId },
+      });
+    } else {
+      await createHouseholdMutation.mutateAsync({
+        ...data,
+        event: eventId,
+      });
+    }
+  };
+
   return (
     <div className="event-tab-pane">
+      {/* Create / Edit Household Modal */}
+      <GuestHouseholdModal
+        isOpen={isHouseholdModalOpen}
+        onClose={() => setIsHouseholdModalOpen(false)}
+        onSubmit={handleHouseholdSubmit}
+        initialHousehold={editingHousehold}
+        isSubmitting={createHouseholdMutation.isPending || updateHouseholdMutation.isPending}
+      />
+
       {/* Tab Header */}
       <div className="tab-pane-header">
         <div>
@@ -176,7 +230,7 @@ export const EventGuestsTab: React.FC<EventGuestsTabProps> = ({
         <button
           type="button"
           className="btn btn-primary"
-          onClick={onAddHousehold}
+          onClick={handleOpenAddHousehold}
           title="Add a new guest household"
         >
           <Plus size={15} style={{ marginRight: 6 }} />
@@ -266,17 +320,15 @@ export const EventGuestsTab: React.FC<EventGuestsTabProps> = ({
               <p>
                 Get started by creating your first guest household to group invitations and track RSVPs.
               </p>
-              {onAddHousehold && (
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  onClick={onAddHousehold}
-                  style={{ marginTop: "1rem" }}
-                >
-                  <Plus size={15} style={{ marginRight: 6 }} />
-                  Add First Household
-                </button>
-              )}
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleOpenAddHousehold}
+                style={{ marginTop: "1rem" }}
+              >
+                <Plus size={15} style={{ marginRight: 6 }} />
+                Add First Household
+              </button>
             </div>
           ) : filteredHouseholds.length === 0 ? (
             <div className="event-state-box empty-state">
@@ -309,7 +361,7 @@ export const EventGuestsTab: React.FC<EventGuestsTabProps> = ({
                   isExpanded={expandedIds.has(household.id)}
                   onToggleExpand={handleToggleExpand}
                   onAddGuest={onAddGuest}
-                  onEditHousehold={onEditHousehold}
+                  onEditHousehold={handleOpenEditHousehold}
                   onDeleteHousehold={onDeleteHousehold}
                   onEditGuest={onEditGuest}
                   onDeleteGuest={onDeleteGuest}

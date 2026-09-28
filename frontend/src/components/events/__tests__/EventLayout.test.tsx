@@ -44,6 +44,11 @@ vi.mock("../../../hooks/useGuests", () => ({
   useGuestHouseholds: vi.fn(),
   useGuests: vi.fn(),
   useUpdateGuest: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useCreateHousehold: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdateHousehold: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteHousehold: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useCreateGuest: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteGuest: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 vi.mock("../../../hooks/useVendors", () => ({
