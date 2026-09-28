@@ -7,12 +7,14 @@ import {
   useUpdateGuest,
   useCreateHousehold,
   useUpdateHousehold,
+  useCreateGuest,
 } from "../../../hooks/useGuests";
 import { Guest, GuestHousehold } from "../../../api/types";
 import { calculateGuestSummary } from "../guests/guestUtils";
 import { GuestSummaryCards } from "../guests/GuestSummaryCards";
 import { GuestHouseholdAccordion } from "../guests/GuestHouseholdAccordion";
 import { GuestHouseholdModal } from "../guests/GuestHouseholdModal";
+import { GuestModal, GuestFormData } from "../guests/GuestModal";
 import "../guests/guests.css";
 
 interface EventGuestsTabProps {
@@ -28,14 +30,15 @@ export const EventGuestsTab: React.FC<EventGuestsTabProps> = ({
   onAddHousehold: propOnAddHousehold,
   onEditHousehold: propOnEditHousehold,
   onDeleteHousehold,
-  onAddGuest,
-  onEditGuest,
+  onAddGuest: propOnAddGuest,
+  onEditGuest: propOnEditGuest,
   onDeleteGuest,
 }) => {
   const { eventId, event } = useEventContext();
   const { data: households = [], isLoading: isLoadingHouseholds } = useHouseholds(eventId);
   const { data: guests = [], isLoading: isLoadingGuests } = useGuests(eventId);
   const updateGuestMutation = useUpdateGuest(eventId);
+  const createGuestMutation = useCreateGuest(eventId);
   const createHouseholdMutation = useCreateHousehold(eventId);
   const updateHouseholdMutation = useUpdateHousehold(eventId);
 
@@ -47,6 +50,11 @@ export const EventGuestsTab: React.FC<EventGuestsTabProps> = ({
   // Household Modal state
   const [isHouseholdModalOpen, setIsHouseholdModalOpen] = React.useState(false);
   const [editingHousehold, setEditingHousehold] = React.useState<GuestHousehold | null>(null);
+
+  // Guest Modal state
+  const [isGuestModalOpen, setIsGuestModalOpen] = React.useState(false);
+  const [editingGuest, setEditingGuest] = React.useState<Guest | null>(null);
+  const [guestModalHouseholdId, setGuestModalHouseholdId] = React.useState<string | undefined>(undefined);
 
   // Initialize all households as expanded when data first loads
   React.useEffect(() => {
@@ -208,6 +216,40 @@ export const EventGuestsTab: React.FC<EventGuestsTabProps> = ({
     }
   };
 
+  const handleOpenAddGuest = (household?: GuestHousehold) => {
+    if (propOnAddGuest && household) {
+      propOnAddGuest(household);
+    } else {
+      setEditingGuest(null);
+      setGuestModalHouseholdId(household?.id);
+      setIsGuestModalOpen(true);
+    }
+  };
+
+  const handleOpenEditGuest = (guest: Guest) => {
+    if (propOnEditGuest) {
+      propOnEditGuest(guest);
+    } else {
+      setEditingGuest(guest);
+      setGuestModalHouseholdId(guest.household);
+      setIsGuestModalOpen(true);
+    }
+  };
+
+  const handleGuestSubmit = async (data: GuestFormData) => {
+    if (editingGuest) {
+      await updateGuestMutation.mutateAsync({
+        id: editingGuest.id,
+        payload: { ...data, event: eventId },
+      });
+    } else {
+      await createGuestMutation.mutateAsync({
+        ...data,
+        event: eventId,
+      });
+    }
+  };
+
   return (
     <div className="event-tab-pane">
       {/* Create / Edit Household Modal */}
@@ -217,6 +259,17 @@ export const EventGuestsTab: React.FC<EventGuestsTabProps> = ({
         onSubmit={handleHouseholdSubmit}
         initialHousehold={editingHousehold}
         isSubmitting={createHouseholdMutation.isPending || updateHouseholdMutation.isPending}
+      />
+
+      {/* Create / Edit Guest Modal */}
+      <GuestModal
+        isOpen={isGuestModalOpen}
+        onClose={() => setIsGuestModalOpen(false)}
+        onSubmit={handleGuestSubmit}
+        households={households}
+        initialGuest={editingGuest}
+        defaultHouseholdId={guestModalHouseholdId}
+        isSubmitting={createGuestMutation.isPending || updateGuestMutation.isPending}
       />
 
       {/* Tab Header */}
@@ -360,10 +413,10 @@ export const EventGuestsTab: React.FC<EventGuestsTabProps> = ({
                   guests={getHouseholdDisplayedGuests(household.id)}
                   isExpanded={expandedIds.has(household.id)}
                   onToggleExpand={handleToggleExpand}
-                  onAddGuest={onAddGuest}
+                  onAddGuest={handleOpenAddGuest}
                   onEditHousehold={handleOpenEditHousehold}
                   onDeleteHousehold={onDeleteHousehold}
-                  onEditGuest={onEditGuest}
+                  onEditGuest={handleOpenEditGuest}
                   onDeleteGuest={onDeleteGuest}
                   onUpdateGuestStatus={handleUpdateGuestStatus}
                   updatingGuestId={updatingGuestId}
