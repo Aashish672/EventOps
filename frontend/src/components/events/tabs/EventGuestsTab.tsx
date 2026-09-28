@@ -7,7 +7,9 @@ import {
   useUpdateGuest,
   useCreateHousehold,
   useUpdateHousehold,
+  useDeleteHousehold,
   useCreateGuest,
+  useDeleteGuest,
 } from "../../../hooks/useGuests";
 import { Guest, GuestHousehold } from "../../../api/types";
 import { calculateGuestSummary } from "../guests/guestUtils";
@@ -15,6 +17,7 @@ import { GuestSummaryCards } from "../guests/GuestSummaryCards";
 import { GuestHouseholdAccordion } from "../guests/GuestHouseholdAccordion";
 import { GuestHouseholdModal } from "../guests/GuestHouseholdModal";
 import { GuestModal, GuestFormData } from "../guests/GuestModal";
+import { DeleteGuestModal, DeleteGuestTarget } from "../guests/DeleteGuestModal";
 import "../guests/guests.css";
 
 interface EventGuestsTabProps {
@@ -29,18 +32,20 @@ interface EventGuestsTabProps {
 export const EventGuestsTab: React.FC<EventGuestsTabProps> = ({
   onAddHousehold: propOnAddHousehold,
   onEditHousehold: propOnEditHousehold,
-  onDeleteHousehold,
+  onDeleteHousehold: propOnDeleteHousehold,
   onAddGuest: propOnAddGuest,
   onEditGuest: propOnEditGuest,
-  onDeleteGuest,
+  onDeleteGuest: propOnDeleteGuest,
 }) => {
   const { eventId, event } = useEventContext();
   const { data: households = [], isLoading: isLoadingHouseholds } = useHouseholds(eventId);
   const { data: guests = [], isLoading: isLoadingGuests } = useGuests(eventId);
   const updateGuestMutation = useUpdateGuest(eventId);
   const createGuestMutation = useCreateGuest(eventId);
+  const deleteGuestMutation = useDeleteGuest(eventId);
   const createHouseholdMutation = useCreateHousehold(eventId);
   const updateHouseholdMutation = useUpdateHousehold(eventId);
+  const deleteHouseholdMutation = useDeleteHousehold(eventId);
 
   const [searchQuery, setSearchQuery] = React.useState("");
   const [rsvpFilter, setRsvpFilter] = React.useState<"all" | "attending" | "pending" | "declined">("all");
@@ -55,6 +60,10 @@ export const EventGuestsTab: React.FC<EventGuestsTabProps> = ({
   const [isGuestModalOpen, setIsGuestModalOpen] = React.useState(false);
   const [editingGuest, setEditingGuest] = React.useState<Guest | null>(null);
   const [guestModalHouseholdId, setGuestModalHouseholdId] = React.useState<string | undefined>(undefined);
+
+  // Delete Modal state
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false);
+  const [deleteTarget, setDeleteTarget] = React.useState<DeleteGuestTarget | null>(null);
 
   // Initialize all households as expanded when data first loads
   React.useEffect(() => {
@@ -250,6 +259,33 @@ export const EventGuestsTab: React.FC<EventGuestsTabProps> = ({
     }
   };
 
+  const handleOpenDeleteHousehold = (household: GuestHousehold) => {
+    if (propOnDeleteHousehold) {
+      propOnDeleteHousehold(household);
+    } else {
+      const memberGuestCount = guests.filter((g) => g.household === household.id).length;
+      setDeleteTarget({ type: "household", household, memberGuestCount });
+      setIsDeleteModalOpen(true);
+    }
+  };
+
+  const handleOpenDeleteGuest = (guest: Guest) => {
+    if (propOnDeleteGuest) {
+      propOnDeleteGuest(guest);
+    } else {
+      setDeleteTarget({ type: "guest", guest });
+      setIsDeleteModalOpen(true);
+    }
+  };
+
+  const handleConfirmDelete = async ({ type, id }: { type: "household" | "guest"; id: string }) => {
+    if (type === "household") {
+      await deleteHouseholdMutation.mutateAsync(id);
+    } else {
+      await deleteGuestMutation.mutateAsync(id);
+    }
+  };
+
   return (
     <div className="event-tab-pane">
       {/* Create / Edit Household Modal */}
@@ -270,6 +306,15 @@ export const EventGuestsTab: React.FC<EventGuestsTabProps> = ({
         initialGuest={editingGuest}
         defaultHouseholdId={guestModalHouseholdId}
         isSubmitting={createGuestMutation.isPending || updateGuestMutation.isPending}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <DeleteGuestModal
+        isOpen={isDeleteModalOpen}
+        target={deleteTarget}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={handleConfirmDelete}
+        isDeleting={deleteHouseholdMutation.isPending || deleteGuestMutation.isPending}
       />
 
       {/* Tab Header */}
@@ -415,9 +460,9 @@ export const EventGuestsTab: React.FC<EventGuestsTabProps> = ({
                   onToggleExpand={handleToggleExpand}
                   onAddGuest={handleOpenAddGuest}
                   onEditHousehold={handleOpenEditHousehold}
-                  onDeleteHousehold={onDeleteHousehold}
+                  onDeleteHousehold={handleOpenDeleteHousehold}
                   onEditGuest={handleOpenEditGuest}
-                  onDeleteGuest={onDeleteGuest}
+                  onDeleteGuest={handleOpenDeleteGuest}
                   onUpdateGuestStatus={handleUpdateGuestStatus}
                   updatingGuestId={updatingGuestId}
                 />
