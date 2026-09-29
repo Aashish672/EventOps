@@ -1,7 +1,6 @@
 /**
  * Organization and Membership API Client
  */
-import { supabase } from "../lib/supabase";
 
 export type OrgRole = "owner" | "planner" | "coordinator" | "viewer";
 
@@ -32,26 +31,7 @@ export interface InviteMemberPayload {
   role: OrgRole;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
-
-
-
-async function getCommonHeaders(): Promise<HeadersInit> {
-  const headers: Record<string, string> = {
-    Accept: "application/json",
-    "Content-Type": "application/json",
-  };
-
-  // Ask Supabase for the current logged-in user's session
-  const { data: { session } } = await supabase.auth.getSession();
-
-  // If they have a valid token, attach it as a Bearer token
-  if (session?.access_token) {
-    headers["Authorization"] = `Bearer ${session.access_token}`;
-  }
-
-  return headers;
-}
+import { API_BASE_URL, getCommonHeaders } from "./core";
 
 /**
  * Fetch all organizations the authenticated user belongs to.
@@ -97,6 +77,41 @@ export async function createOrganization(payload: CreateOrgPayload): Promise<Org
   return response.json();
 }
 
+export interface RawMembership {
+  id: string | number;
+  organization?: string;
+  user?: {
+    id: number;
+    username: string;
+    email: string;
+    first_name?: string;
+    last_name?: string;
+  };
+  user_id?: number;
+  username?: string;
+  email?: string;
+  role: OrgRole;
+  created_at?: string;
+  joined_at?: string;
+}
+
+export function normalizeMembership(raw: RawMembership): Membership {
+  const user = raw.user;
+  const username = raw.username || user?.username || user?.email || "Unknown Member";
+  const email = raw.email || user?.email || "";
+  const userId = raw.user_id !== undefined ? raw.user_id : (user?.id ?? 0);
+  const joinedAt = raw.joined_at || raw.created_at || new Date().toISOString();
+
+  return {
+    id: String(raw.id),
+    user_id: userId,
+    username,
+    email,
+    role: raw.role,
+    joined_at: joinedAt,
+  };
+}
+
 /**
  * Fetch members for a specific organization.
  */
@@ -111,7 +126,8 @@ export async function fetchOrganizationMembers(orgId: string): Promise<Membershi
     throw new Error(`Failed to fetch organization members (HTTP ${response.status})`);
   }
 
-  return response.json();
+  const data = await response.json();
+  return (Array.isArray(data) ? data : []).map(normalizeMembership);
 }
 
 /**
@@ -138,7 +154,8 @@ export async function inviteOrganizationMember(
     throw new Error(message);
   }
 
-  return response.json();
+  const data = await response.json();
+  return normalizeMembership(data);
 }
 
 /**

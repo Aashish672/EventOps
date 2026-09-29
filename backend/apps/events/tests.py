@@ -5,13 +5,16 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 from events.models import (
     BudgetCategory,
+    Document,
     Event,
     GuestHousehold,
     Task,
+    VendorBooking,
 )
 from organizations.models import Membership, Organization
 from rest_framework import status
 from rest_framework.test import APIClient
+from vendors.models import Vendor
 
 User = get_user_model()
 
@@ -246,3 +249,193 @@ def test_guest_cross_tenant_validation(api_client, auth_user, event, other_user)
     # The API should reject this!
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert "does not belong to the selected event" in str(response.data)
+
+
+@pytest.mark.django_db
+def test_create_vendor_booking_success(api_client, auth_user, event, organization):
+    api_client.force_authenticate(user=auth_user)
+    vendor = Vendor.objects.create(
+        organization=organization,
+        name="Delicious Catering",
+        category="catering",
+    )
+    payload = {
+        "event": str(event.id),
+        "vendor": str(vendor.id),
+        "status": "booked",
+        "agreed_price": "2500.00",
+        "contract_notes": "Signed and deposit paid",
+    }
+    response = api_client.post("/api/vendor-bookings/", data=payload, format="json")
+    assert response.status_code == status.HTTP_201_CREATED
+    assert response.data["status"] == "booked"
+    assert response.data["agreed_price"] == "2500.00"
+    assert VendorBooking.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_vendor_booking_cross_tenant_validation(api_client, auth_user, event):
+    api_client.force_authenticate(user=auth_user)
+    other_org = Organization.objects.create(
+        name="Other Vendor Org", slug="other-vendor-org"
+    )
+    Membership.objects.create(organization=other_org, user=auth_user, role="owner")
+    vendor_other_org = Vendor.objects.create(
+        organization=other_org,
+        name="Other Org Florist",
+        category="florist",
+    )
+    payload = {
+        "event": str(event.id),
+        "vendor": str(vendor_other_org.id),
+        "status": "inquiry",
+    }
+    response = api_client.post("/api/vendor-bookings/", data=payload, format="json")
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert "does not belong to your organization" in str(response.data)
+
+
+@pytest.mark.django_db
+def test_create_document_success_assigns_uploader(api_client, auth_user, event):
+    api_client.force_authenticate(user=auth_user)
+    payload = {
+        "event": str(event.id),
+        "title": "Floor Plan",
+        "file_url": "https://storage.example.com/docs/floorplan.pdf",
+    }
+    response = api_client.post("/api/documents/", data=payload, format="json")
+    assert response.status_code == status.HTTP_201_CREATED
+    assert response.data["title"] == "Floor Plan"
+    assert response.data["uploaded_by"] == auth_user.id
+    doc = Document.objects.get(id=response.data["id"])
+    assert doc.uploaded_by == auth_user
+    assert doc.organization == event.organization
+
+
+@pytest.mark.django_db
+def test_document_tenant_isolation(api_client, auth_user, other_user, event):
+    # Setup document created by auth_user
+    doc = Document.objects.create(
+        organization=event.organization,
+        event=event,
+        title="Confidential Budget Contract",
+        file_url="https://storage.example.com/confidential.pdf",
+        uploaded_by=auth_user,
+    )
+
+    # auth_user should see document in event query
+    api_client.force_authenticate(user=auth_user)
+    res_auth = api_client.get(f"/api/documents/?event={event.id}")
+    assert res_auth.status_code == status.HTTP_200_OK
+    assert len(res_auth.data) == 1
+
+    # other_user (different org) must NOT see document
+    api_client.force_authenticate(user=other_user)
+    res_other = api_client.get(f"/api/documents/?event={event.id}")
+    assert res_other.status_code == status.HTTP_200_OK
+    assert len(res_other.data) == 0
+
+    # other_user must NOT be able to upload document to auth_user's event
+    res_create = api_client.post(
+        "/api/documents/",
+        data={
+            "event": str(event.id),
+            "title": "Hacker Document",
+            "file_url": "https://hacker.com/malware.pdf",
+        },
+        format="json",
+    )
+    assert res_create.status_code == status.HTTP_403_FORBIDDEN
+
+    # other_user must NOT be able to delete auth_user's document
+    res_delete = api_client.delete(f"/api/documents/{doc.id}/")
+    assert res_delete.status_code == status.HTTP_404_NOT_FOUND
+
+
+@pytest.mark.django_db
+def test_vendor_booking_tenant_isolation(api_client, auth_user, other_user, event, organization):
+    vendor = Vendor.objects.create(
+        organization=organization,
+        name="Catering Pros",
+        category="catering",
+    )
+    booking = VendorBooking.objects.create(
+        organization=organization,
+        event=event,
+        vendor=vendor,
+        status="booked",
+        agreed_price="5000.00",
+    )
+
+    # auth_user sees booking
+    api_client.force_authenticate(user=auth_user)
+    res_auth = api_client.get(f"/api/vendor-bookings/?event={event.id}")
+    assert res_auth.status_code == status.HTTP_200_OK
+    assert len(res_auth.data) == 1
+
+    # other_user cannot see booking
+    api_client.force_authenticate(user=other_user)
+    res_other = api_client.get(f"/api/vendor-bookings/?event={event.id}")
+    assert res_other.status_code == status.HTTP_200_OK
+    assert len(res_other.data) == 0
+
+    # other_user cannot create booking in event
+    res_create = api_client.post(
+        "/api/vendor-bookings/",
+        data={
+            "event": str(event.id),
+            "vendor": str(vendor.id),
+            "status": "inquiry",
+        },
+        format="json",
+    )
+    assert res_create.status_code == status.HTTP_403_FORBIDDEN
+
+    # other_user cannot delete booking
+    res_delete = api_client.delete(f"/api/vendor-bookings/{booking.id}/")
+    assert res_delete.status_code == status.HTTP_404_NOT_FOUND
+
+
+@pytest.mark.django_db
+def test_guest_and_household_tenant_isolation(api_client, auth_user, other_user, event):
+    household = GuestHousehold.objects.create(
+        organization=event.organization,
+        event=event,
+        name="The Royal Family",
+    )
+
+    # auth_user sees household
+    api_client.force_authenticate(user=auth_user)
+    res_auth = api_client.get(f"/api/guest-households/?event={event.id}")
+    assert res_auth.status_code == status.HTTP_200_OK
+    assert len(res_auth.data) == 1
+
+    # other_user cannot see household
+    api_client.force_authenticate(user=other_user)
+    res_other = api_client.get(f"/api/guest-households/?event={event.id}")
+    assert res_other.status_code == status.HTTP_200_OK
+    assert len(res_other.data) == 0
+
+    # other_user cannot create household in auth_user's event
+    res_create_hh = api_client.post(
+        "/api/guest-households/",
+        data={
+            "event": str(event.id),
+            "name": "Intruders Household",
+        },
+        format="json",
+    )
+    assert res_create_hh.status_code == status.HTTP_403_FORBIDDEN
+
+    # other_user cannot create guest in auth_user's event
+    res_create_guest = api_client.post(
+        "/api/guests/",
+        data={
+            "event": str(event.id),
+            "household": str(household.id),
+            "first_name": "Intruder",
+            "last_name": "User",
+        },
+        format="json",
+    )
+    assert res_create_guest.status_code == status.HTTP_403_FORBIDDEN

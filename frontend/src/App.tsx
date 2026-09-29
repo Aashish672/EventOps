@@ -1,5 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { Session } from "@supabase/supabase-js";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useNavigate,
+} from "react-router-dom";
 import { Users, Settings, CreditCard } from "lucide-react";
 import { OrganizationProvider } from "./context/OrganizationProvider";
 import { useOrganization } from "./context/useOrganization";
@@ -7,17 +15,31 @@ import { AppShell } from "./components/layout/AppShell";
 import { MembersTab } from "./components/settings/MembersTab";
 import { GeneralSettingsTab } from "./components/settings/GeneralSettingsTab";
 import { CreateOrgModal } from "./components/CreateOrgModal";
+import { EventsDashboard } from "./components/events/EventsDashboard";
+import { EventProvider } from "./context/EventProvider";
+import { EventLayout } from "./components/events/EventLayout";
+import { EventOverviewTab } from "./components/events/tabs/EventOverviewTab";
+import { EventTimelineTab } from "./components/events/tabs/EventTimelineTab";
+import { EventBudgetTab } from "./components/events/tabs/EventBudgetTab";
+import { EventGuestsTab } from "./components/events/tabs/EventGuestsTab";
+import { EventVendorsTab } from "./components/events/tabs/EventVendorsTab";
+import { EventDocumentsTab } from "./components/events/tabs/EventDocumentsTab";
 import { supabase } from "./lib/supabase";
 import { AuthScreen } from "./components/AuthScreen";
+import { ErrorBoundary } from "./components/common/ErrorBoundary";
 
-const AppContent: React.FC = () => {
+const queryClient = new QueryClient();
+
+interface SettingsViewProps {
+  tab: "members" | "general";
+}
+
+const SettingsView: React.FC<SettingsViewProps> = ({ tab }) => {
   const { activeOrg, members } = useOrganization();
-  const [currentTab, setCurrentTab] = useState<"members" | "general">("members");
+  const navigate = useNavigate();
 
   return (
-    <AppShell currentTab={currentTab} onTabChange={setCurrentTab}>
-      <CreateOrgModal />
-
+    <>
       {/* Page Header */}
       <div className="page-header">
         <div>
@@ -35,9 +57,9 @@ const AppContent: React.FC = () => {
         <button
           type="button"
           role="tab"
-          aria-selected={currentTab === "members"}
-          className={`tab-btn ${currentTab === "members" ? "active" : ""}`}
-          onClick={() => setCurrentTab("members")}
+          aria-selected={tab === "members"}
+          className={`tab-btn ${tab === "members" ? "active" : ""}`}
+          onClick={() => navigate("/settings/members")}
         >
           <Users size={15} />
           <span>Members</span>
@@ -49,9 +71,9 @@ const AppContent: React.FC = () => {
         <button
           type="button"
           role="tab"
-          aria-selected={currentTab === "general"}
-          className={`tab-btn ${currentTab === "general" ? "active" : ""}`}
-          onClick={() => setCurrentTab("general")}
+          aria-selected={tab === "general"}
+          className={`tab-btn ${tab === "general" ? "active" : ""}`}
+          onClick={() => navigate("/settings/general")}
         >
           <Settings size={15} />
           <span>General</span>
@@ -72,7 +94,38 @@ const AppContent: React.FC = () => {
       </div>
 
       {/* Tab Panels */}
-      {currentTab === "members" ? <MembersTab /> : <GeneralSettingsTab />}
+      {tab === "members" ? <MembersTab /> : <GeneralSettingsTab />}
+    </>
+  );
+};
+
+const AppContent: React.FC = () => {
+  return (
+    <AppShell>
+      <CreateOrgModal />
+      <Routes>
+        <Route path="/" element={<Navigate to="/events" replace />} />
+        <Route path="/events" element={<EventsDashboard />} />
+        <Route
+          path="/events/:eventId"
+          element={
+            <EventProvider>
+              <EventLayout />
+            </EventProvider>
+          }
+        >
+          <Route index element={<EventOverviewTab />} />
+          <Route path="overview" element={<EventOverviewTab />} />
+          <Route path="timeline" element={<EventTimelineTab />} />
+          <Route path="budget" element={<EventBudgetTab />} />
+          <Route path="guests" element={<EventGuestsTab />} />
+          <Route path="vendors" element={<EventVendorsTab />} />
+          <Route path="documents" element={<EventDocumentsTab />} />
+        </Route>
+        <Route path="/settings/members" element={<SettingsView tab="members" />} />
+        <Route path="/settings/general" element={<SettingsView tab="general" />} />
+        <Route path="*" element={<Navigate to="/events" replace />} />
+      </Routes>
     </AppShell>
   );
 };
@@ -98,18 +151,28 @@ export const App: React.FC = () => {
 
   // Show a blank screen or spinner while checking the session
   if (loading) {
-    return <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Loading...</div>;
+    return (
+      <div style={{ height: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        Loading...
+      </div>
+    );
   }
 
-  // If they aren't logged in, show our new Auth Screen!
+  // If they aren't logged in, show our Auth Screen
   if (!session) {
     return <AuthScreen />;
   }
 
-  // If they are logged in, show the actual application!
+  // If they are logged in, show the application with React Router and React Query
   return (
-    <OrganizationProvider>
-      <AppContent />
-    </OrganizationProvider>
+    <QueryClientProvider client={queryClient}>
+      <OrganizationProvider>
+        <BrowserRouter>
+          <ErrorBoundary>
+            <AppContent />
+          </ErrorBoundary>
+        </BrowserRouter>
+      </OrganizationProvider>
+    </QueryClientProvider>
   );
 };

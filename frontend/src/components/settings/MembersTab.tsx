@@ -39,16 +39,18 @@ export const MembersTab: React.FC = () => {
     const q = searchQuery.toLowerCase();
     return members.filter(
       (m) =>
-        m.username.toLowerCase().includes(q) ||
-        m.email.toLowerCase().includes(q) ||
-        m.role.toLowerCase().includes(q)
+        (m.username || "").toLowerCase().includes(q) ||
+        (m.email || "").toLowerCase().includes(q) ||
+        (m.role || "").toLowerCase().includes(q)
     );
   }, [members, searchQuery]);
 
   // Initials generator
-  const getInitials = (name: string) => {
-    return name
-      .split(/[-_.\s]+/)
+  const getInitials = (name?: string) => {
+    if (!name || typeof name !== "string") return "?";
+    const parts = name.trim().split(/[-_.\s]+/);
+    if (!parts[0]) return "?";
+    return parts
       .map((part) => part[0])
       .slice(0, 2)
       .join("")
@@ -183,38 +185,41 @@ export const MembersTab: React.FC = () => {
                   const isSoleOwner =
                     member.role === "owner" &&
                     members.filter((m) => m.role === "owner").length === 1;
+                  const displayName = member.username || member.email || "Member";
 
                   return (
                     <tr key={member.id}>
                       <td>
                         <div className="member-cell">
                           <div className="member-avatar-initials">
-                            {getInitials(member.username || member.email)}
+                            {getInitials(displayName)}
                           </div>
                           <div className="member-info">
                             <span className="member-name-text">
-                              {member.username}
+                              {displayName}
                             </span>
                             <span className="member-email-text">
-                              {member.email}
+                              {member.email || "—"}
                             </span>
                           </div>
                         </div>
                       </td>
                       <td>
-                        <span className={`badge-role role-${member.role.toLowerCase()}`}>
-                          {member.role.toUpperCase()}
+                        <span className={`badge-role role-${(member.role || "viewer").toLowerCase()}`}>
+                          {(member.role || "viewer").toUpperCase()}
                         </span>
                       </td>
                       <td>
                         <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", color: "var(--text-secondary)", fontSize: "0.8rem" }}>
                           <Calendar size={13} color="var(--text-muted)" />
                           <span>
-                            {new Date(member.joined_at).toLocaleDateString(undefined, {
-                              year: "numeric",
-                              month: "short",
-                              day: "numeric",
-                            })}
+                            {member.joined_at
+                              ? new Date(member.joined_at).toLocaleDateString(undefined, {
+                                  year: "numeric",
+                                  month: "short",
+                                  day: "numeric",
+                                })
+                              : "—"}
                           </span>
                         </div>
                       </td>
@@ -226,11 +231,11 @@ export const MembersTab: React.FC = () => {
                             title={
                               isSoleOwner
                                 ? "Sole owner cannot be removed"
-                                : `Remove ${member.username}`
+                                : `Remove ${displayName}`
                             }
                             disabled={isSoleOwner}
                             onClick={() => setMemberToRemove(member)}
-                            aria-label={`Remove ${member.username}`}
+                            aria-label={`Remove ${displayName}`}
                           >
                             <Trash2 size={15} />
                           </button>
