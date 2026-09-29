@@ -105,7 +105,181 @@
   transition: width 0.4s ease;
 }
 
-/* Status Badges */
+/* ─── Vendor Toolbar (Search & Filter) ────────────────────────────────────── */
+.vendor-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.vendor-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.vendor-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 240px;
+}
+
+.vendor-search-input {
+  width: 100%;
+  padding: 0.45rem 0.75rem 0.45rem 2.1rem;
+  font-size: 0.825rem;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.vendor-search-input:focus {
+  border-color: var(--accent-primary);
+}
+
+.vendor-search-icon {
+  position: absolute;
+  left: 0.65rem;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.vendor-filter-pills {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: var(--bg-subtle, #f1f5f9);
+  padding: 0.2rem;
+  border-radius: var(--radius-md);
+}
+
+.vendor-filter-btn {
+  padding: 0.3rem 0.65rem;
+  font-size: 0.775rem;
+  font-weight: 500;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.vendor-filter-btn:hover {
+  color: var(--text-primary);
+}
+
+.vendor-filter-btn.active {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+}
+
+/* ─── Vendor Bookings Table ────────────────────────────────────────────────── */
+.vendor-table-container {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.vendor-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.vendor-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.vendor-table th {
+  padding: 0.75rem 1.15rem;
+  font-size: 0.725rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  background: var(--bg-subtle, #f8fafc);
+  border-bottom: 1px solid var(--border-default);
+}
+
+.vendor-table td {
+  padding: 0.85rem 1.15rem;
+  font-size: 0.85rem;
+  border-bottom: 1px solid var(--border-subtle, #f1f5f9);
+  vertical-align: middle;
+}
+
+.vendor-table-row:last-child td {
+  border-bottom: none;
+}
+
+.vendor-table-row:hover {
+  background: var(--bg-subtle, #f8fafc);
+}
+
+/* Vendor Name & Contact Cell */
+.vendor-name-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.vendor-primary-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.vendor-contact-preview {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  flex-wrap: wrap;
+}
+
+.vendor-contact-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* Category Badge */
+.vendor-category-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: var(--bg-subtle, #f8fafc);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-default);
+  white-space: nowrap;
+}
+
+/* Status Badges & Inline Dropdown */
+.vendor-status-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .vendor-status-pill {
   display: inline-flex;
   align-items: center;
@@ -141,16 +315,78 @@
   border: 1px solid #fecaca;
 }
 
-/* Category Badges */
-.vendor-category-tag {
+.vendor-status-select {
+  padding: 0.15rem 0.4rem;
+  font-size: 0.725rem;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  color: var(--text-muted);
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.vendor-status-select:focus {
+  border-color: var(--accent-primary);
+  color: var(--text-primary);
+}
+
+/* Cost & Notes Cells */
+.vendor-price-value {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.vendor-price-tbd {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.vendor-notes-text {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vendor-notes-empty {
+  font-size: 0.775rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Row Action Buttons */
+.vendor-actions-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.35rem;
+}
+
+.vendor-action-btn {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  padding: 0.175rem 0.5rem;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
   border-radius: var(--radius-sm);
-  font-size: 0.75rem;
-  font-weight: 500;
-  background: var(--bg-subtle, #f8fafc);
-  color: var(--text-secondary);
-  border: 1px solid var(--border-default);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.vendor-action-btn:hover {
+  background: var(--bg-subtle);
+  color: var(--text-primary);
+}
+
+.vendor-action-btn.delete:hover {
+  background: #fef2f2;
+  color: #dc2626;
 }
