@@ -310,3 +310,132 @@ def test_create_document_success_assigns_uploader(api_client, auth_user, event):
     doc = Document.objects.get(id=response.data["id"])
     assert doc.uploaded_by == auth_user
     assert doc.organization == event.organization
+
+
+@pytest.mark.django_db
+def test_document_tenant_isolation(api_client, auth_user, other_user, event):
+    # Setup document created by auth_user
+    doc = Document.objects.create(
+        organization=event.organization,
+        event=event,
+        title="Confidential Budget Contract",
+        file_url="https://storage.example.com/confidential.pdf",
+        uploaded_by=auth_user,
+    )
+
+    # auth_user should see document in event query
+    api_client.force_authenticate(user=auth_user)
+    res_auth = api_client.get(f"/api/documents/?event={event.id}")
+    assert res_auth.status_code == status.HTTP_200_OK
+    assert len(res_auth.data) == 1
+
+    # other_user (different org) must NOT see document
+    api_client.force_authenticate(user=other_user)
+    res_other = api_client.get(f"/api/documents/?event={event.id}")
+    assert res_other.status_code == status.HTTP_200_OK
+    assert len(res_other.data) == 0
+
+    # other_user must NOT be able to upload document to auth_user's event
+    res_create = api_client.post(
+        "/api/documents/",
+        data={
+            "event": str(event.id),
+            "title": "Hacker Document",
+            "file_url": "https://hacker.com/malware.pdf",
+        },
+        format="json",
+    )
+    assert res_create.status_code == status.HTTP_403_FORBIDDEN
+
+    # other_user must NOT be able to delete auth_user's document
+    res_delete = api_client.delete(f"/api/documents/{doc.id}/")
+    assert res_delete.status_code == status.HTTP_404_NOT_FOUND
+
+
+@pytest.mark.django_db
+def test_vendor_booking_tenant_isolation(api_client, auth_user, other_user, event, organization):
+    vendor = Vendor.objects.create(
+        organization=organization,
+        name="Catering Pros",
+        category="catering",
+    )
+    booking = VendorBooking.objects.create(
+        organization=organization,
+        event=event,
+        vendor=vendor,
+        status="booked",
+        agreed_price="5000.00",
+    )
+
+    # auth_user sees booking
+    api_client.force_authenticate(user=auth_user)
+    res_auth = api_client.get(f"/api/vendor-bookings/?event={event.id}")
+    assert res_auth.status_code == status.HTTP_200_OK
+    assert len(res_auth.data) == 1
+
+    # other_user cannot see booking
+    api_client.force_authenticate(user=other_user)
+    res_other = api_client.get(f"/api/vendor-bookings/?event={event.id}")
+    assert res_other.status_code == status.HTTP_200_OK
+    assert len(res_other.data) == 0
+
+    # other_user cannot create booking in event
+    res_create = api_client.post(
+        "/api/vendor-bookings/",
+        data={
+            "event": str(event.id),
+            "vendor": str(vendor.id),
+            "status": "inquiry",
+        },
+        format="json",
+    )
+    assert res_create.status_code == status.HTTP_403_FORBIDDEN
+
+    # other_user cannot delete booking
+    res_delete = api_client.delete(f"/api/vendor-bookings/{booking.id}/")
+    assert res_delete.status_code == status.HTTP_404_NOT_FOUND
+
+
+@pytest.mark.django_db
+def test_guest_and_household_tenant_isolation(api_client, auth_user, other_user, event):
+    household = GuestHousehold.objects.create(
+        organization=event.organization,
+        event=event,
+        name="The Royal Family",
+    )
+
+    # auth_user sees household
+    api_client.force_authenticate(user=auth_user)
+    res_auth = api_client.get(f"/api/guest-households/?event={event.id}")
+    assert res_auth.status_code == status.HTTP_200_OK
+    assert len(res_auth.data) == 1
+
+    # other_user cannot see household
+    api_client.force_authenticate(user=other_user)
+    res_other = api_client.get(f"/api/guest-households/?event={event.id}")
+    assert res_other.status_code == status.HTTP_200_OK
+    assert len(res_other.data) == 0
+
+    # other_user cannot create household in auth_user's event
+    res_create_hh = api_client.post(
+        "/api/guest-households/",
+        data={
+            "event": str(event.id),
+            "name": "Intruders Household",
+        },
+        format="json",
+    )
+    assert res_create_hh.status_code == status.HTTP_403_FORBIDDEN
+
+    # other_user cannot create guest in auth_user's event
+    res_create_guest = api_client.post(
+        "/api/guests/",
+        data={
+            "event": str(event.id),
+            "household": str(household.id),
+            "first_name": "Intruder",
+            "last_name": "User",
+        },
+        format="json",
+    )
+    assert res_create_guest.status_code == status.HTTP_403_FORBIDDEN
