@@ -9,6 +9,7 @@ import {
   DollarSign,
   Users,
   Store,
+  FileText,
 } from "lucide-react";
 import { useEventContext } from "../../context/useEventContext";
 import { useOrganization } from "../../context/useOrganization";
@@ -140,6 +141,13 @@ export const EventLayout: React.FC = () => {
       icon: <Store size={16} />,
       path: `/events/${eventId}/vendors`,
       activeMatch: cleanPath.endsWith("/vendors"),
+    },
+    {
+      id: "documents",
+      label: "Documents",
+      icon: <FileText size={16} />,
+      path: `/events/${eventId}/documents`,
+      activeMatch: cleanPath.endsWith("/documents"),
     },
   ];
 

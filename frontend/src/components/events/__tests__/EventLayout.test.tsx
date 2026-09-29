@@ -6,6 +6,7 @@ import { EventTimelineTab } from "../tabs/EventTimelineTab";
 import { EventBudgetTab } from "../tabs/EventBudgetTab";
 import { EventGuestsTab } from "../tabs/EventGuestsTab";
 import { EventVendorsTab } from "../tabs/EventVendorsTab";
+import { EventDocumentsTab } from "../tabs/EventDocumentsTab";
 import { EventProvider } from "../../../context/EventProvider";
 import { useEventContext } from "../../../context/useEventContext";
 import { OrganizationContext, OrganizationContextType } from "../../../context/OrganizationContext";
@@ -57,6 +58,13 @@ vi.mock("../../../hooks/useVendors", () => ({
   useUpdateVendorBooking: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useCreateVendorBooking: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useDeleteVendorBooking: () => ({ mutateAsync: vi.fn(), isPending: false }),
+}));
+
+vi.mock("../../../hooks/useDocuments", () => ({
+  useDocuments: vi.fn(() => ({ data: [], isLoading: false })),
+  useCreateDocument: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdateDocument: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteDocument: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 import { useEvent } from "../../../hooks/useEvents";
@@ -210,6 +218,7 @@ function renderWithProviders(
               <Route path="budget" element={<EventBudgetTab />} />
               <Route path="guests" element={<EventGuestsTab />} />
               <Route path="vendors" element={<EventVendorsTab />} />
+              <Route path="documents" element={<EventDocumentsTab />} />
             </Route>
           </Routes>
         </MemoryRouter>
@@ -270,16 +279,17 @@ describe("EventLayout and Routing (Epic 3.2)", () => {
     expect(screen.getAllByText(/A prestigious fundraising gala evening/i).length).toBeGreaterThanOrEqual(1);
   });
 
-  it("renders all 5 sub-navigation tabs", () => {
+  it("renders all 6 sub-navigation tabs", () => {
     renderWithProviders();
 
     const tabs = screen.getAllByRole("tab");
-    expect(tabs).toHaveLength(5);
+    expect(tabs).toHaveLength(6);
     expect(screen.getByRole("tab", { name: /Overview/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Timeline & Tasks/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Budget Tracker/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Guests/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Vendors/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Documents/i })).toBeInTheDocument();
   });
 
   it("navigates between sub-tabs when tab buttons are clicked", () => {
@@ -303,6 +313,10 @@ describe("EventLayout and Routing (Epic 3.2)", () => {
     // Click Vendors tab
     fireEvent.click(screen.getByRole("tab", { name: /Vendors/i }));
     expect(screen.getByRole("heading", { level: 2, name: "Vendor Bookings" })).toBeInTheDocument();
+
+    // Click Documents tab
+    fireEvent.click(screen.getByRole("tab", { name: /Documents/i }));
+    expect(screen.getByRole("heading", { level: 2, name: "Event Documents" })).toBeInTheDocument();
   });
 
   it("navigates back to /events when clicking Back to Events button", () => {

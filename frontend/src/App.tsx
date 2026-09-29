@@ -23,6 +23,7 @@ import { EventTimelineTab } from "./components/events/tabs/EventTimelineTab";
 import { EventBudgetTab } from "./components/events/tabs/EventBudgetTab";
 import { EventGuestsTab } from "./components/events/tabs/EventGuestsTab";
 import { EventVendorsTab } from "./components/events/tabs/EventVendorsTab";
+import { EventDocumentsTab } from "./components/events/tabs/EventDocumentsTab";
 import { supabase } from "./lib/supabase";
 import { AuthScreen } from "./components/AuthScreen";
 
@@ -118,6 +119,7 @@ const AppContent: React.FC = () => {
           <Route path="budget" element={<EventBudgetTab />} />
           <Route path="guests" element={<EventGuestsTab />} />
           <Route path="vendors" element={<EventVendorsTab />} />
+          <Route path="documents" element={<EventDocumentsTab />} />
         </Route>
         <Route path="/settings/members" element={<SettingsView tab="members" />} />
         <Route path="/settings/general" element={<SettingsView tab="general" />} />
