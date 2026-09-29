@@ -2,10 +2,19 @@ import React from "react";
 import { Store, Plus, Sparkles } from "lucide-react";
 import { useEventContext } from "../../../context/useEventContext";
 import { useVendorBookings } from "../../../hooks/useVendors";
+import { calculateVendorSummary } from "../vendors/vendorUtils";
+import { VendorSummaryCards } from "../vendors/VendorSummaryCards";
+import "../vendors/vendors.css";
 
-export const EventVendorsTab: React.FC = () => {
+interface EventVendorsTabProps {
+  onBookVendor?: () => void;
+}
+
+export const EventVendorsTab: React.FC<EventVendorsTabProps> = ({ onBookVendor }) => {
   const { eventId, event } = useEventContext();
   const { data: bookings = [], isLoading } = useVendorBookings(eventId);
+
+  const summary = calculateVendorSummary(bookings);
 
   return (
     <div className="event-tab-pane">
@@ -19,17 +28,23 @@ export const EventVendorsTab: React.FC = () => {
         <button
           type="button"
           className="btn btn-primary"
-          title="Add booking functionality arriving in Epic 3.5"
-          disabled
+          onClick={onBookVendor}
+          disabled={!onBookVendor}
+          title={onBookVendor ? "Book a vendor" : "Booking modal available in Sub-task 3.6.3"}
         >
           <Plus size={15} style={{ marginRight: 6 }} />
           Book Vendor
-          <span className="soon-pill" style={{ marginLeft: 6 }}>Epic 3.5</span>
         </button>
       </div>
 
+      {/* Vendor Summary Cards */}
+      {!isLoading && <VendorSummaryCards summary={summary} />}
+
       {isLoading ? (
-        <div className="placeholder-pulse" style={{ height: 160, borderRadius: 8, background: "var(--bg-subtle)" }} />
+        <div
+          className="placeholder-pulse"
+          style={{ height: 160, borderRadius: 8, background: "var(--bg-subtle)" }}
+        />
       ) : bookings.length === 0 ? (
         <div className="event-state-box empty-state">
           <div className="event-state-icon">
@@ -37,22 +52,24 @@ export const EventVendorsTab: React.FC = () => {
           </div>
           <h3>No Vendors Booked</h3>
           <p>
-            The vendor booking management interface and contracts workflow will be activated in <strong>Epic 3.5</strong>.
+            No vendors have been booked for this event yet. Use the directory to contract catering, venues, photography, and more.
           </p>
           <div className="epic-badge-note">
             <Sparkles size={13} style={{ marginRight: 4 }} />
-            Ready for Epic 3.5: Guest & Vendor Management UI
+            Ready for Epic 3.6: Vendor Bookings Management UI
           </div>
         </div>
       ) : (
         <div className="vendor-preview-list">
           {bookings.map((booking) => (
             <div key={booking.id} className="vendor-preview-item">
-              <span className={`booking-status-badge status-${booking.status}`}>
+              <span className={`vendor-status-pill status-${booking.status}`}>
                 {booking.status.replace("_", " ").toUpperCase()}
               </span>
               <span className="booking-price">
-                {booking.agreed_price ? `$${parseFloat(booking.agreed_price).toLocaleString()}` : "Price TBD"}
+                {booking.agreed_price
+                  ? `$${parseFloat(booking.agreed_price).toLocaleString()}`
+                  : "Price TBD"}
               </span>
             </div>
           ))}
