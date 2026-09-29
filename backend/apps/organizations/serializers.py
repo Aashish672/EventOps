@@ -18,13 +18,27 @@ class UserSummarySerializer(serializers.ModelSerializer):
 
 
 class MembershipSerializer(serializers.ModelSerializer):
-    """Serializes a membership with nested user details."""
+    """Serializes a membership with nested user details and convenient flat aliases."""
 
     user = UserSummarySerializer(read_only=True)
+    user_id = serializers.IntegerField(source="user.id", read_only=True)
+    username = serializers.CharField(source="user.username", read_only=True)
+    email = serializers.EmailField(source="user.email", read_only=True)
+    joined_at = serializers.DateTimeField(source="created_at", read_only=True)
 
     class Meta:
         model = Membership
-        fields = ("id", "organization", "user", "role", "created_at")
+        fields = (
+            "id",
+            "organization",
+            "user",
+            "user_id",
+            "username",
+            "email",
+            "role",
+            "joined_at",
+            "created_at",
+        )
         read_only_fields = ("id", "organization", "created_at")
 
 

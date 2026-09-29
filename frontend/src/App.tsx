@@ -26,6 +26,7 @@ import { EventVendorsTab } from "./components/events/tabs/EventVendorsTab";
 import { EventDocumentsTab } from "./components/events/tabs/EventDocumentsTab";
 import { supabase } from "./lib/supabase";
 import { AuthScreen } from "./components/AuthScreen";
+import { ErrorBoundary } from "./components/common/ErrorBoundary";
 
 const queryClient = new QueryClient();
 
@@ -167,7 +168,9 @@ export const App: React.FC = () => {
     <QueryClientProvider client={queryClient}>
       <OrganizationProvider>
         <BrowserRouter>
-          <AppContent />
+          <ErrorBoundary>
+            <AppContent />
+          </ErrorBoundary>
         </BrowserRouter>
       </OrganizationProvider>
     </QueryClientProvider>
