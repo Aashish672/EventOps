@@ -11,7 +11,10 @@ import { VendorBooking, Event } from "../../../../api/types";
 // Mock useVendors hooks
 vi.mock("../../../../hooks/useVendors", () => ({
   useVendorBookings: vi.fn(),
-  useVendors: vi.fn(),
+  useVendors: () => ({ data: [], isLoading: false }),
+  useUpdateVendorBooking: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useCreateVendorBooking: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteVendorBooking: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 import { useVendorBookings } from "../../../../hooks/useVendors";

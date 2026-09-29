@@ -53,6 +53,10 @@ vi.mock("../../../hooks/useGuests", () => ({
 
 vi.mock("../../../hooks/useVendors", () => ({
   useVendorBookings: vi.fn(),
+  useVendors: () => ({ data: [], isLoading: false }),
+  useUpdateVendorBooking: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useCreateVendorBooking: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteVendorBooking: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 import { useEvent } from "../../../hooks/useEvents";
