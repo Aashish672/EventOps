@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     "organizations",
     "vendors",
     "events",
+    "agents",
 ]
 
 MIDDLEWARE = [
