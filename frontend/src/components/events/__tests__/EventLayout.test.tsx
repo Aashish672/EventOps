@@ -67,6 +67,10 @@ vi.mock("../../../hooks/useDocuments", () => ({
   useDeleteDocument: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
+vi.mock("../../../hooks/useAgents", () => ({
+  useAgentRuns: () => ({ data: [], isLoading: false }),
+}));
+
 import { useEvent } from "../../../hooks/useEvents";
 import { useTasks } from "../../../hooks/useTasks";
 import { useBudgetCategories } from "../../../hooks/useBudgets";
@@ -279,17 +283,18 @@ describe("EventLayout and Routing (Epic 3.2)", () => {
     expect(screen.getAllByText(/A prestigious fundraising gala evening/i).length).toBeGreaterThanOrEqual(1);
   });
 
-  it("renders all 6 sub-navigation tabs", () => {
+  it("renders all 7 sub-navigation tabs", () => {
     renderWithProviders();
 
     const tabs = screen.getAllByRole("tab");
-    expect(tabs).toHaveLength(6);
+    expect(tabs).toHaveLength(7);
     expect(screen.getByRole("tab", { name: /Overview/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Timeline & Tasks/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Budget Tracker/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Guests/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Vendors/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Documents/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /AI Agent Console/i })).toBeInTheDocument();
   });
 
   it("navigates between sub-tabs when tab buttons are clicked", () => {
