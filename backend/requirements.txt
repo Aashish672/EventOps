@@ -11,3 +11,7 @@ langgraph>=0.2.0
 langchain-core>=0.3.0
 PyJWT>=2.8.0
 cryptography>=41.0.0
+langgraph
+langchain-core
+langchain-groq
+langchain-google-genai
