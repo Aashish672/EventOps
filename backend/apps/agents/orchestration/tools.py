@@ -34,8 +34,11 @@ def get_event_tasks(event_id: str, org_id: str) -> list[dict[str, Any]]:
     Fetch all tasks associated with an event.
     Requires event_id and org_id to enforce multi-tenant isolation.
     """
-    tasks = Task.objects.filter(event_id=event_id,
-    organization_id=org_id).order_by("due_date")
+    tasks = (
+        Task.objects.filter(event_id=event_id, organization_id=org_id)
+        .select_related("assigned_to")
+        .order_by("due_date")
+    )
     return [
         {
             "id": str(task.id),
