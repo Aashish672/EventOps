@@ -62,5 +62,5 @@ class RejectProposalSerializer(serializers.Serializer):
     reason = serializers.CharField(required=False, allow_blank=True, default="")
 
 class EditApproveProposalSerializer(serializers.Serializer):
-    """Payload for approvinf an agent proposal with human-edited diff adjustments."""
+    """Payload for approving an agent proposal with human-edited diff adjustments."""
     modified_diff = serializers.DictField(child=serializers.ListField(child=serializers.DictField()))

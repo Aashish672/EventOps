@@ -2,7 +2,7 @@ import pytest
 from agents.models import AgentRun, ChangeLogEntry
 from agents.services import apply_agent_proposal, reject_agent_proposal
 from django.contrib.auth import get_user_model
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.utils import timezone
 from events.models import BudgetCategory, Event, Task
 from organizations.models import Membership, Organization
@@ -139,3 +139,59 @@ def test_reject_agent_proposal_makes_no_mutations(test_setup):
     assert task.status == "todo"
     # Verify ZERO ChangeLogEntry records created
     assert ChangeLogEntry.objects.filter(agent_run=agent_run).count() == 0
+
+
+@pytest.mark.django_db
+def test_apply_agent_proposal_missing_entity_raises_validation_error(test_setup):
+    """Verify that targeting a non-existent entity raises a clean ValidationError."""
+    event = test_setup["event"]
+    owner = test_setup["owner"]
+    agent_run = AgentRun.objects.create(
+        organization=test_setup["org"],
+        event=event,
+        agent_type=AgentRun.AgentType.RISK_CHANGE_IMPACT,
+        trigger="schedule_check",
+        proposed_diff={
+            "mutations": [
+                {
+                    "action": "update",
+                    "entity_type": "Task",
+                    "entity_id": "00000000-0000-0000-0000-000000000000",
+                    "fields": {"status": "done"},
+                }
+            ]
+        },
+        state=AgentRun.State.PENDING,
+    )
+    with pytest.raises(ValidationError) as exc_info:
+        apply_agent_proposal(str(agent_run.id), user=owner)
+    assert "does not exist in this organization" in str(exc_info.value)
+
+
+@pytest.mark.django_db
+def test_apply_budget_category_dynamic_field_updates(test_setup):
+    """Verify that updating BudgetCategory supports both name and allocated_amount."""
+    category = test_setup["category"]
+    owner = test_setup["owner"]
+    agent_run = AgentRun.objects.create(
+        organization=test_setup["org"],
+        event=test_setup["event"],
+        agent_type=AgentRun.AgentType.BUDGET_INTELLIGENCE,
+        trigger="rebalance",
+        proposed_diff={
+            "mutations": [
+                {
+                    "action": "update",
+                    "entity_type": "BudgetCategory",
+                    "entity_id": str(category.id),
+                    "fields": {"name": "Audio Visual & Rigging", "allocated_amount": "15000.00"},
+                }
+            ]
+        },
+        state=AgentRun.State.PENDING,
+    )
+    apply_agent_proposal(str(agent_run.id), user=owner)
+    category.refresh_from_db()
+    assert category.name == "Audio Visual & Rigging"
+    assert str(category.allocated_amount) == "15000.00"
+
