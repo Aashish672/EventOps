@@ -2,6 +2,7 @@
 URL configuration for EventOps project.
 """
 
+from agents.views import AgentRunViewSet, ChangeLogViewSet
 from django.contrib import admin
 from django.urls import include, path
 from events.views import (
@@ -33,6 +34,8 @@ router.register(r"guests", GuestViewSet, basename="guest")
 router.register(r"vendor-bookings", VendorBookingViewSet, basename="vendor-booking")
 router.register(r"documents", DocumentViewSet, basename="document")
 
+router.register(r"agent-runs", AgentRunViewSet, basename="agent-run")
+router.register(r"change-log", ChangeLogViewSet, basename="change-log")
 
 urlpatterns = [
     path("admin/", admin.site.urls),
