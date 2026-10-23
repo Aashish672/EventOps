@@ -1,9 +1,9 @@
 from datetime import timedelta
-import pytest
-from django.utils import timezone
 
+import pytest
 from agents.models import AgentRun
 from agents.orchestration.engine import TaskDependencyEngine
+from django.utils import timezone
 from events.models import Event, Task, VendorBooking
 from organizations.models import Organization
 from vendors.models import Vendor
@@ -96,7 +96,6 @@ def test_evaluate_date_shift_forward_proportional(engine_data):
     event = engine_data["event"]
     task_active = engine_data["task_active"]
     task_done = engine_data["task_done"]
-    now = engine_data["now"]
 
     old_start = event.start_date
     new_start = old_start + timedelta(days=5)

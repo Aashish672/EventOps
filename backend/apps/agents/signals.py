@@ -1,11 +1,10 @@
 import logging
 from typing import Any
 
-from django.db.models.signals import post_save, pre_save
-from django.dispatch import receiver
-
 from agents.models import AgentRun
 from agents.orchestration.engine import EventRiskReport, TaskDependencyEngine
+from django.db.models.signals import post_save, pre_save
+from django.dispatch import receiver
 from events.models import Event, VendorBooking
 
 logger = logging.getLogger(__name__)
