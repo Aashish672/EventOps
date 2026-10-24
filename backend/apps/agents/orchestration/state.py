@@ -25,6 +25,9 @@ class AgentState(TypedDict):
     reasoning: str
     errors: Annotated[list[str], operator.add]
 
+    # Structured remediation proposal from LLM
+    raw_proposal: dict[str, Any]
+    
     #Proposed diff contract (matches single write path expectations)
     # E.g. {"mutations": [{"action": "update", "entity_type": "Task", "entity_id": "...", "fields": {...}}]}
     proposed_diff: dict[str, Any]
