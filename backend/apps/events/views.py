@@ -1,7 +1,14 @@
+import logging
+
+from agents.models import AgentRun
+from agents.orchestration.graph import run_risk_impact_agent
+from agents.serializers import AgentRunSerializer
 from core.permissions import IsOrganizationPlannerOrOwner
 from organizations.models import Membership
-from rest_framework import viewsets
+from rest_framework import status, viewsets
+from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.response import Response
 
 from .models import (
     BudgetCategory,
@@ -24,6 +31,7 @@ from .serializers import (
     VendorBookingSerializer,
 )
 
+logger = logging.getLogger(__name__)
 
 class EventViewSet(viewsets.ModelViewSet):
     serializer_class = EventSerializer
@@ -47,6 +55,64 @@ class EventViewSet(viewsets.ModelViewSet):
             )
 
         serializer.save()
+    
+    @action(detail=True, methods=["post"], url_path="analyze-risk")
+    def analyze_risk(self, request, pk=None) -> Response:
+        """
+        Triggers the LangGraph Risk & Change Impact agent on-demand for this event.
+        Assembles live context snapshots, executes LLM reasoning, and registers an 
+        auditable pending AgentRun proposal.
+        """
+        event = self.get_object()
+        trigger_reason = request.data.get(
+            "trigger_reason", "Manual planner risk and change audit"
+        )
+
+        logger.info(
+            "User %s initiated on-demand risk analysis for Event %s (Org %s)",
+            request.user.id,
+            event.id,
+            event.organization_id,
+        )
+
+        try:
+            # Execute the compiled 3-node LangGraph workflow
+            result_state = run_risk_impact_agent(
+                event_id=str(event.id),
+                org_id=str(event.organization_id),
+                trigger=trigger_reason
+            )
+
+            proposed_diff = result_state.get("proposed_diff", {})
+            reasoning = result_state.get("reasoning", "")
+
+            # Persist pending AgentRun following the Single Write Path contract
+            agent_run = AgentRun.objects.create(
+                organization=event.organization,
+                event=event,
+                agent_type=AgentRun.AgentType.RISK_CHANGE_IMPACT,
+                trigger=trigger_reason,
+                input_snapshot={
+                    "trigger": trigger_reason,
+                    "event_summary": result_state.get("event_summary", {}),
+                    "task_count": len(result_state.get("tasks_snapshot", [])),
+                    "budget_categories_count": len(result_state.get("budget_snapshot", {}).get("categories", [])),
+                    "vendor_count": len(result_state.get("vendors_snapshot", []))
+                },
+                reasoning=reasoning,
+                proposed_diff=proposed_diff,
+                state=AgentRun.State.PENDING,
+            )
+
+            serializer = AgentRunSerializer(agent_run)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        except Exception as exc:
+            logger.exception("Error running risk analysis for Event %s", event.id)
+            return Response(
+                {"error": "Failed to run risk analysis: " + str(exc)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 class TaskViewSet(viewsets.ModelViewSet):

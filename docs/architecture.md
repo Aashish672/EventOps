@@ -13,7 +13,10 @@ backend/
 ├── config/              # Global Django settings, URLs, Celery, ASGI/WSGI
 ├── apps/
 │   ├── core/            # Cross-cutting concerns: base models, health check, audit helpers
-│   └── organizations/   # Tenant boundary, memberships, and organizational RBAC
+│   ├── organizations/   # Tenant boundary, memberships, and organizational RBAC
+│   ├── events/          # Events, tasks, budgets, guests, vendors, documents
+│   ├── vendors/         # Vendor directory and service categories
+│   └── agents/          # AI agent governance, LangGraph workflows, and Single Write Path
 ```
 
 ---
@@ -91,3 +94,46 @@ To eliminate code duplication across 10+ relational models while enforcing consi
   * Renders active tenant members with user avatars and role badges (`Owner`, `Planner`, `Coordinator`, `Viewer`).
   * Provides owner-only member invitation by email and role assignment.
   * Enforces member removal with sole-owner safety check matching backend guardrails.
+
+---
+
+## 6. AI Agent Architecture & Governance Layer (`apps.agents`)
+
+### Core Philosophy: Human-in-the-Loop & Single Write Path
+In EventOps, AI agents act as intelligent analytical advisors, never autonomous database mutators. All agent workflows strictly adhere to the following governance rules:
+1. **Read-Only Inspection**: Agents only query application data through explicitly scoped, tenant-isolated tools (`get_event_summary`, `get_event_tasks`, `get_event_budget`, `get_event_vendors`).
+2. **Proposal Mutation Schema**: Agent recommendations are serialized into an auditable `AgentRun` proposal with status `pending`. Proposals conform to the Single Write Path format:
+   ```json
+   {
+     "mutations": [
+       {
+         "action": "update",
+         "entity_type": "Task",
+         "entity_id": "<uuid>",
+         "fields": { "due_date": "2026-11-20T10:00:00Z" }
+       }
+     ]
+   }
+   ```
+3. **Atomic Human Approval**: Only authorized human planners or owners can approve, reject, or edit-approve proposals via `apply_agent_proposal()`. Database mutations execute inside an atomic transaction.
+4. **Immutable Audit Trail**: Every applied proposal automatically generates a `ChangeLogEntry` recording `actor_type="agent"`, `actor_id="<agent_type>"`, before/after diffs, and the human reviewer who authorized the change.
+
+### Subsystem Components (`apps/agents/orchestration/`)
+* **`TaskDependencyEngine` (`engine.py`)**:
+  * Fast in-memory calculation of schedule slippage (`delta_days`).
+  * Proportional task deadline adjustment, late margin calculation (`hours before kickoff`), and conflict boundary detection.
+  * Domain keyword scanning for vendor contract cancellation fallouts (e.g., catering, venue, audio/visual).
+* **Automated Lifecycle Signals (`signals.py`)**:
+  * Pre-save hooks (`capture_event_pre_save_state`, `capture_vendor_booking_pre_save_state`) snapshot existing database state.
+  * Post-save listeners detect schedule shifts and vendor contract cancellations, automatically registering pending proposals without blocking primary save operations.
+* **Multi-Provider LLM Factory (`llm.py`)**:
+  * Free Primary: Groq (`llama-3.3-70b-versatile`).
+  * Free Fallback: Google Gemini (`gemini-2.0-flash`).
+  * Deterministic Offline Mock: `MockRiskImpactLLM` enabling zero-credential local development and CI testing.
+* **3-Node LangGraph StateGraph (`graph.py`)**:
+  * `inspect_context`: Gathers real-time read-only snapshots.
+  * `evaluate_ripple_effects`: Multi-provider LLM Chain-of-Thought reasoning with Pydantic structured output (`RiskRemediationProposal`).
+  * `generate_remediation_proposal`: Formats recommendations into Single Write Path mutations.
+* **On-Demand REST API Action**:
+  * `POST /api/events/{id}/analyze-risk/` on `EventViewSet` allows planners to trigger on-demand assessments directly from the UI.
+
