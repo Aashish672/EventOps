@@ -1,7 +1,7 @@
 import logging
 import os
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from agents.orchestration.schemas import RiskRemediationProposal, TaskAdjustment
@@ -49,7 +49,7 @@ class MockRiskImpactLLM:
                         shifted_dt = parsed_dt + timedelta(hours=3)
                         new_due_str = shifted_dt.isoformat()
                     except (ValueError, TypeError):
-                        new_due_str = (datetime.now(timezone.utc) + timedelta(days=2)).isoformat()
+                        new_due_str = (datetime.now(UTC) + timedelta(days=2)).isoformat()
 
                     task_adjustments.append(
                         TaskAdjustment(
