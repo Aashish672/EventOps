@@ -24,6 +24,7 @@ import { EventBudgetTab } from "./components/events/tabs/EventBudgetTab";
 import { EventGuestsTab } from "./components/events/tabs/EventGuestsTab";
 import { EventVendorsTab } from "./components/events/tabs/EventVendorsTab";
 import { EventDocumentsTab } from "./components/events/tabs/EventDocumentsTab";
+import { EventAgentConsoleTab } from "./components/events/tabs/EventAgentConsoleTab";
 import { supabase } from "./lib/supabase";
 import { AuthScreen } from "./components/AuthScreen";
 import { ErrorBoundary } from "./components/common/ErrorBoundary";
@@ -121,6 +122,8 @@ const AppContent: React.FC = () => {
           <Route path="guests" element={<EventGuestsTab />} />
           <Route path="vendors" element={<EventVendorsTab />} />
           <Route path="documents" element={<EventDocumentsTab />} />
+          <Route path="agents" element={<EventAgentConsoleTab />} />
+          <Route path="agent-console" element={<EventAgentConsoleTab />} />
         </Route>
         <Route path="/settings/members" element={<SettingsView tab="members" />} />
         <Route path="/settings/general" element={<SettingsView tab="general" />} />

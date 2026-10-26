@@ -10,9 +10,11 @@ import {
   Users,
   Store,
   FileText,
+  Sparkles,
 } from "lucide-react";
 import { useEventContext } from "../../context/useEventContext";
 import { useOrganization } from "../../context/useOrganization";
+import { useAgentRuns } from "../../hooks/useAgents";
 
 function formatDateRange(startDateStr: string, endDateStr: string): string {
   try {
@@ -61,6 +63,7 @@ function formatDateRange(startDateStr: string, endDateStr: string): string {
 export const EventLayout: React.FC = () => {
   const { eventId, event, isLoading, error, activeTab } = useEventContext();
   const { members } = useOrganization();
+  const { data: agentRuns = [] } = useAgentRuns(eventId);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -102,8 +105,8 @@ export const EventLayout: React.FC = () => {
     : null;
 
   const dateDisplay = formatDateRange(event.start_date, event.end_date);
-
   const cleanPath = location.pathname.replace(/\/+$/, "");
+  const pendingAgentRunsCount = agentRuns.filter((r) => r.state === "pending").length;
 
   // Tab definitions
   const tabs = [
@@ -148,6 +151,14 @@ export const EventLayout: React.FC = () => {
       icon: <FileText size={16} />,
       path: `/events/${eventId}/documents`,
       activeMatch: cleanPath.endsWith("/documents"),
+    },
+    {
+      id: "agents",
+      label: "AI Agent Console",
+      icon: <Sparkles size={16} />,
+      path: `/events/${eventId}/agents`,
+      activeMatch: cleanPath.endsWith("/agents") || cleanPath.endsWith("/agent-console"),
+      badge: pendingAgentRunsCount > 0 ? pendingAgentRunsCount : undefined,
     },
   ];
 
@@ -202,6 +213,22 @@ export const EventLayout: React.FC = () => {
             >
               {tab.icon}
               <span>{tab.label}</span>
+              {tab.badge !== undefined && (
+                <span
+                  className="tab-pending-badge"
+                  style={{
+                    marginLeft: 6,
+                    background: "#f59e0b",
+                    color: "#ffffff",
+                    fontSize: "0.7rem",
+                    fontWeight: 700,
+                    padding: "1px 6px",
+                    borderRadius: "999px",
+                  }}
+                >
+                  {tab.badge}
+                </span>
+              )}
             </button>
           );
         })}

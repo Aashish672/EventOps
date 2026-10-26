@@ -122,3 +122,71 @@ export interface Document {
   created_at: string;
   updated_at: string;
 }
+
+// ─── Agent Governance & Audit Log ───────────────────────────────────────────
+
+export interface MutationItem {
+  action: "update" | "create" | "delete";
+  entity_type: "Task" | "BudgetCategory" | "BudgetLineItem" | "VendorBooking";
+  entity_id?: string;
+  fields: Record<string, unknown>;
+}
+
+export interface ProposalDiff {
+  mutations: MutationItem[];
+  risk_severity?: "low" | "medium" | "high" | "critical";
+  impact_summary?: string;
+  task_adjustments?: Array<{
+    task_id: string;
+    title: string;
+    proposed_due_date: string;
+    suggested_action: "shift_due_date" | "escalate_bottleneck" | "reassign" | "none";
+    reason: string;
+    slack_margin_hours?: number;
+  }>;
+  budget_adjustments?: Array<{
+    category_id: string;
+    category_name?: string;
+    recommended_buffer: string;
+    reason: string;
+  }>;
+  [key: string]: unknown;
+}
+
+export interface AgentRun {
+  id: string;
+  organization: string;
+  event: string;
+  agent_type:
+    | "document_intelligence"
+    | "event_planning"
+    | "budget_intelligence"
+    | "vendor_evaluation"
+    | "risk_change_impact";
+  trigger: string;
+  input_snapshot: Record<string, unknown>;
+  reasoning: string;
+  proposed_diff: ProposalDiff;
+  final_diff: ProposalDiff | null;
+  state: "pending" | "approved" | "rejected" | "edited_approved";
+  reviewed_by: number | null;
+  reviewed_by_email: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ChangeLogEntry {
+  id: string;
+  organization: string;
+  event: string;
+  actor_type: "user" | "agent";
+  actor_id: string;
+  entity_type: string;
+  entity_id: string;
+  before: Record<string, unknown>;
+  after: Record<string, unknown>;
+  agent_run: string | null;
+  created_at: string;
+}
+
