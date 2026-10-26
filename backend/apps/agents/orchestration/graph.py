@@ -102,28 +102,42 @@ def generate_remediation_proposal_node(state: AgentState) -> dict[str, Any]:
     budget_adjustments = raw_proposal.get("budget_adjustments", [])
 
     mutations: list[dict[str, Any]] = []
+    valid_task_ids = {str(t["id"]) for t in state.get("tasks_snapshot", []) if "id" in t}
+    valid_category_ids = {
+        str(c["id"])
+        for c in state.get("budget_snapshot", {}).get("categories", [])
+        if "id" in c
+    }
 
-    #1. Translate task schedule shifts into Single Write Path mutations
+    # 1. Translate task schedule shifts into Single Write Path mutations
     for adj in task_adjustments:
-        if adj.get("suggested_action") == "shift_due_date" and adj.get("task_id") and adj.get("proposed_due_date"):
+        task_id = str(adj.get("task_id"))
+        is_valid_task = not valid_task_ids or task_id in valid_task_ids
+        if (
+            adj.get("suggested_action") in ("shift_due_date", "escalate_bottleneck")
+            and is_valid_task
+            and adj.get("proposed_due_date")
+        ):
             mutations.append(
                 {
                     "action": "update",
                     "entity_type": "Task",
-                    "entity_id": str(adj["task_id"]),
-                    "fields":{
+                    "entity_id": task_id,
+                    "fields": {
                         "due_date": adj["proposed_due_date"],
                     },
                 }
             )
-    
-    #2. Translate budget adjustments into Single Write Path mutations
+
+    # 2. Translate budget adjustments into Single Write Path mutations
     for b_adj in budget_adjustments:
-        if b_adj.get("category_id") and b_adj.get("recommended_buffer"):
+        cat_id = str(b_adj.get("category_id"))
+        is_valid_cat = not valid_category_ids or cat_id in valid_category_ids
+        if is_valid_cat and b_adj.get("recommended_buffer"):
             mutations.append({
                 "action": "update",
                 "entity_type": "BudgetCategory",
-                "entity_id": str(b_adj["category_id"]),
+                "entity_id": cat_id,
                 "fields": {
                     "allocated_amount": b_adj["recommended_buffer"],
                 },

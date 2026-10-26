@@ -34,6 +34,12 @@ def format_risk_analysis_prompt(
         for v in vendors
     ) or "No vendor bookings recorded."
 
+    budget_cats = budget.get("categories", [])
+    budget_text = "\n".join(
+        f"- Category ID: {c.get('id')} | Name: '{c.get('name')}' | Allocated: ${c.get('allocated_amount', 0)}"
+        for c in budget_cats
+    ) or "No budget categories recorded."
+
     return f"""### EVENT PROFILE
 - Event Name: {event_summary.get('name')}
 - Scheduled Dates: {event_summary.get('start_date')} to {event_summary.get('end_date')}
@@ -50,6 +56,9 @@ def format_risk_analysis_prompt(
 
 ### CURRENT VENDOR CONTRACTS
 {vendors_text}
+
+### CURRENT BUDGET CATEGORIES
+{budget_text}
 
 Analyze the operational impacts of this trigger.
 Formulate a structured RiskRemediationProposal containing:
