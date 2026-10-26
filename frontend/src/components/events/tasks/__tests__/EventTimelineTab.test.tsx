@@ -29,6 +29,14 @@ vi.mock("../../../../hooks/useTasks", () => ({
   }),
 }));
 
+const mockAnalyzeRisk = vi.fn();
+vi.mock("../../../../hooks/useAgents", () => ({
+  useAnalyzeEventRisk: () => ({
+    mutateAsync: mockAnalyzeRisk,
+    isPending: false,
+  }),
+}));
+
 import { useTasks } from "../../../../hooks/useTasks";
 
 const mockEvent: Event = {
@@ -322,4 +330,53 @@ describe("EventTimelineTab & Task Management (Epic 3.3)", () => {
       expect(mockDeleteTask).toHaveBeenCalledWith("task-1");
     });
   });
+
+  it("renders Assess Schedule Risk button and opens RiskAssessmentModal", async () => {
+    renderComponent();
+
+    const assessBtn = screen.getByTestId("assess-risk-btn");
+    expect(assessBtn).toBeInTheDocument();
+    expect(assessBtn).toHaveTextContent("Assess Schedule Risk");
+
+    // Modal is initially not open
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    // Click button to open modal
+    fireEvent.click(assessBtn);
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByText("AI Risk & Change Impact Agent")).toBeInTheDocument();
+  });
+
+  it("triggers risk assessment and shows success notification banner", async () => {
+    mockAnalyzeRisk.mockResolvedValueOnce({
+      id: "run-abc-123",
+      proposed_diff: {
+        impact_summary: "Schedule cascade identified. 2 tasks adjusted.",
+      },
+    });
+
+    renderComponent();
+
+    // Open modal
+    fireEvent.click(screen.getByTestId("assess-risk-btn"));
+
+    // Submit assessment
+    const runBtn = screen.getByRole("button", { name: /Run Risk Assessment/i });
+    fireEvent.click(runBtn);
+
+    await waitFor(() => {
+      expect(mockAnalyzeRisk).toHaveBeenCalled();
+    });
+
+    // Success notification banner should appear
+    await waitFor(() => {
+      expect(screen.getByTestId("risk-assessment-notification")).toBeInTheDocument();
+      expect(
+        screen.getByText(/Risk Assessment generated! A remediation proposal is pending review/i)
+      ).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /View in Agent Console/i })).toBeInTheDocument();
+    });
+  });
 });
+

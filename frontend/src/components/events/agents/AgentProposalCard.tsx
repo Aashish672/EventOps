@@ -21,6 +21,7 @@ import {
   Sparkles,
   Clock,
   UserCheck,
+  AlertTriangle,
 } from "lucide-react";
 
 interface AgentProposalCardProps {
@@ -129,6 +130,52 @@ export const AgentProposalCard: React.FC<AgentProposalCardProps> = ({
     }
   };
 
+  const currentDiff = proposal.final_diff || proposal.proposed_diff;
+  const riskSeverity = (currentDiff as { risk_severity?: string })?.risk_severity;
+  const impactSummary = (currentDiff as { impact_summary?: string })?.impact_summary;
+
+  const getRiskSeverityBadge = (severity?: string) => {
+    if (!severity) return null;
+    const normalized = severity.toLowerCase();
+    switch (normalized) {
+      case "critical":
+        return (
+          <span className="risk-severity-badge severity-critical" data-testid="risk-severity-badge">
+            <AlertTriangle size={12} style={{ marginRight: 4 }} />
+            CRITICAL RISK
+          </span>
+        );
+      case "high":
+        return (
+          <span className="risk-severity-badge severity-high" data-testid="risk-severity-badge">
+            <AlertTriangle size={12} style={{ marginRight: 4 }} />
+            HIGH RISK
+          </span>
+        );
+      case "medium":
+        return (
+          <span className="risk-severity-badge severity-medium" data-testid="risk-severity-badge">
+            <ShieldAlert size={12} style={{ marginRight: 4 }} />
+            MEDIUM RISK
+          </span>
+        );
+      case "low":
+        return (
+          <span className="risk-severity-badge severity-low" data-testid="risk-severity-badge">
+            <ShieldAlert size={12} style={{ marginRight: 4 }} />
+            LOW RISK
+          </span>
+        );
+      default:
+        return (
+          <span className="risk-severity-badge severity-medium" data-testid="risk-severity-badge">
+            <ShieldAlert size={12} style={{ marginRight: 4 }} />
+            {severity.toUpperCase()} RISK
+          </span>
+        );
+    }
+  };
+
   return (
     <div className={`agent-proposal-card ${proposal.state}`} data-testid={`agent-proposal-${proposal.id}`}>
       {/* Top Banner */}
@@ -138,6 +185,7 @@ export const AgentProposalCard: React.FC<AgentProposalCardProps> = ({
             {persona.icon}
             <span>{persona.name}</span>
           </div>
+          {getRiskSeverityBadge(riskSeverity)}
           <div className="proposal-meta-time">
             <Clock size={13} style={{ marginRight: 4 }} />
             <span>{new Date(proposal.created_at).toLocaleString()}</span>
@@ -174,6 +222,17 @@ export const AgentProposalCard: React.FC<AgentProposalCardProps> = ({
               <p>{proposal.reasoning}</p>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Executive Impact Summary Callout */}
+      {impactSummary && (
+        <div className="proposal-impact-summary-box" data-testid="proposal-impact-summary">
+          <div className="impact-summary-header">
+            <ShieldAlert size={16} className="impact-summary-icon" />
+            <span className="impact-summary-title">Executive Impact Assessment</span>
+          </div>
+          <p className="impact-summary-text">{impactSummary}</p>
         </div>
       )}
 

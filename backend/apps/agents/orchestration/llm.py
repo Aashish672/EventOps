@@ -1,8 +1,10 @@
 import logging
 import os
+import re
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from agents.orchestration.schemas import RiskRemediationProposal
+from agents.orchestration.schemas import RiskRemediationProposal, TaskAdjustment
 from langchain_core.messages import AIMessage
 from langchain_core.runnables import RunnableLambda
 
@@ -21,15 +23,61 @@ class MockRiskImpactLLM:
         def _mock_invoke(inputs: Any) -> RiskRemediationProposal:
             if self.canned_proposal:
                 return self.canned_proposal
-            
+
+            # Extract prompt text from messages
+            prompt_text = ""
+            if isinstance(inputs, list):
+                for msg in inputs:
+                    if hasattr(msg, "content"):
+                        prompt_text += f" {msg.content}"
+                    elif isinstance(msg, dict):
+                        prompt_text += f" {msg.get('content', '')}"
+            elif isinstance(inputs, str):
+                prompt_text = inputs
+
+            # Dynamically extract active tasks from the prompt snapshot
+            task_adjustments: list[TaskAdjustment] = []
+            task_pattern = re.findall(
+                r"- ID: ([0-9a-fA-F-]+) \| Title: '([^']+)' \| Status: ([a-zA-Z_]+) \| Due: ([^\n]+)",
+                prompt_text,
+            )
+            for task_id, title, status, due_str in task_pattern:
+                if status.lower() not in ("done", "completed"):
+                    try:
+                        due_clean = due_str.strip().replace("Z", "+00:00")
+                        parsed_dt = datetime.fromisoformat(due_clean)
+                        shifted_dt = parsed_dt + timedelta(hours=3)
+                        new_due_str = shifted_dt.isoformat()
+                    except (ValueError, TypeError):
+                        new_due_str = (datetime.now(UTC) + timedelta(days=2)).isoformat()
+
+                    task_adjustments.append(
+                        TaskAdjustment(
+                            task_id=task_id,
+                            title=title,
+                            suggested_action="shift_due_date",
+                            proposed_due_date=new_due_str,
+                            reason=f"Shifting '{title}' by 3 hours to absorb upstream delays and restore margin.",
+                        )
+                    )
+
+            severity = "high" if len(task_adjustments) > 1 else "medium"
+            summary = (
+                f"Schedule shift detected affecting {len(task_adjustments)} downstream task(s). "
+                "Remediation proposed to protect event milestones and avoid team overruns."
+                if task_adjustments
+                else "Event schedule adjusted. Identified active tasks requiring timeline alignment."
+            )
+
             return RiskRemediationProposal(
-                risk_severity="medium",
-                impact_summary="Event schedule adjusted. Identified active tasks requiring timeline alignment.",
+                risk_severity=severity,
+                impact_summary=summary,
                 reasoning=(
-                    "Chain of thought analysis: Evaluated task deadlines againt the revised event timeline."
-                    "Shifting non-completed task due dates proportinally preserves planning buffers."
+                    "Chain of thought analysis: Evaluated task deadlines against the revised timeline. "
+                    "Identified downstream active tasks with critical path dependencies. "
+                    "Proposing proportional timeline adjustments to maintain operational buffers."
                 ),
-                task_adjustments=[],
+                task_adjustments=task_adjustments,
                 budget_adjustments=[],
             )
         return RunnableLambda(_mock_invoke)
@@ -71,7 +119,7 @@ def get_llm(provider: str | None = None, temperature: float = 0.1) -> Any:
         try: 
             from langchain_google_genai import ChatGoogleGenerativeAI
 
-            model_name = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+            model_name = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
             logger.info("Initialising ChatGoogleGenerativeAI with model: %s", model_name)
             return ChatGoogleGenerativeAI(
                 model=model_name,

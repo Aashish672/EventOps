@@ -147,4 +147,49 @@ describe("AgentProposalCard Component", () => {
     expect(screen.getByText(/planner@apex.com/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Approve Proposal/i })).not.toBeInTheDocument();
   });
+
+  it("renders risk severity badge and impact summary callout when provided in diff", () => {
+    const riskProposal: AgentRun = {
+      ...mockProposal,
+      proposed_diff: {
+        mutations: [],
+        risk_severity: "critical",
+        impact_summary: "Critical schedule cascade identified: 3 downstream milestones violate 24h setup buffer.",
+      },
+    };
+
+    renderWithClient(
+      <AgentProposalCard proposal={riskProposal} eventId="evt-100" canModerate={true} />
+    );
+
+    const severityBadge = screen.getByTestId("risk-severity-badge");
+    expect(severityBadge).toBeInTheDocument();
+    expect(severityBadge).toHaveTextContent("CRITICAL RISK");
+    expect(severityBadge).toHaveClass("severity-critical");
+
+    const impactBox = screen.getByTestId("proposal-impact-summary");
+    expect(impactBox).toBeInTheDocument();
+    expect(impactBox).toHaveTextContent(/Critical schedule cascade identified/i);
+    expect(impactBox).toHaveTextContent("Executive Impact Assessment");
+  });
+
+  it("renders medium and high severity badges correctly", () => {
+    const highRiskProposal: AgentRun = {
+      ...mockProposal,
+      proposed_diff: {
+        mutations: [],
+        risk_severity: "high",
+        impact_summary: "High risk vendor delay.",
+      },
+    };
+
+    renderWithClient(
+      <AgentProposalCard proposal={highRiskProposal} eventId="evt-100" canModerate={true} />
+    );
+
+    const badge = screen.getByTestId("risk-severity-badge");
+    expect(badge).toHaveTextContent("HIGH RISK");
+    expect(badge).toHaveClass("severity-high");
+  });
 });
+

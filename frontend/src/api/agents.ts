@@ -76,3 +76,19 @@ export async function fetchChangeLog(eventId: string): Promise<ChangeLogEntry[]>
   const data = await response.json();
   return Array.isArray(data) ? data : data.results || [];
 }
+
+export async function analyzeEventRisk(eventId: string, reason?: string): Promise<AgentRun> {
+  const response = await fetch(`${API_BASE_URL}/api/events/${eventId}/analyze-risk/`, {
+    method: "POST",
+    headers: await getCommonHeaders(),
+    credentials: "include",
+    body: JSON.stringify({ reason: reason || "" }),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    const message = typeof err.detail === "object" ? err.detail.error : err.detail;
+    throw new Error(message || err.error || `Failed to analyze schedule risk (HTTP ${response.status})`);
+  }
+  return response.json();
+}
+
