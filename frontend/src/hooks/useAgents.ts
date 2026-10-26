@@ -5,6 +5,7 @@ import {
   rejectAgentRun,
   editApproveAgentRun,
   fetchChangeLog,
+  analyzeEventRisk,
 } from "../api/agents";
 import { ProposalDiff } from "../api/types";
 
@@ -67,3 +68,15 @@ export function useEditApproveAgentRun(eventId: string) {
     },
   });
 }
+
+export function useAnalyzeEventRisk(eventId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (reason?: string) => analyzeEventRisk(eventId, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["agent-runs", eventId] });
+    },
+  });
+}
+

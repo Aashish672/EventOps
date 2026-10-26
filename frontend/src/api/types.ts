@@ -134,6 +134,22 @@ export interface MutationItem {
 
 export interface ProposalDiff {
   mutations: MutationItem[];
+  risk_severity?: "low" | "medium" | "high" | "critical";
+  impact_summary?: string;
+  task_adjustments?: Array<{
+    task_id: string;
+    title: string;
+    proposed_due_date: string;
+    suggested_action: "shift_due_date" | "escalate_bottleneck" | "reassign" | "none";
+    reason: string;
+    slack_margin_hours?: number;
+  }>;
+  budget_adjustments?: Array<{
+    category_id: string;
+    category_name?: string;
+    recommended_buffer: string;
+    reason: string;
+  }>;
   [key: string]: unknown;
 }
 

@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Plus,
   Kanban,
@@ -6,6 +7,9 @@ import {
   Search,
   CheckSquare,
   Filter,
+  ShieldAlert,
+  Sparkles,
+  X,
 } from "lucide-react";
 import { useEventContext } from "../../../context/useEventContext";
 import { useOrganization } from "../../../context/useOrganization";
@@ -20,9 +24,12 @@ import { TaskKanbanBoard } from "../tasks/TaskKanbanBoard";
 import { TaskListView } from "../tasks/TaskListView";
 import { TaskModal } from "../tasks/TaskModal";
 import { DeleteTaskModal } from "../tasks/DeleteTaskModal";
+import { RiskAssessmentModal } from "../tasks/RiskAssessmentModal";
+import "../agents/agents.css";
 
 export const EventTimelineTab: React.FC = () => {
   const { eventId, event } = useEventContext();
+  const navigate = useNavigate();
   const { members } = useOrganization();
 
   // Tasks Query & Mutations
@@ -43,6 +50,8 @@ export const EventTimelineTab: React.FC = () => {
   const [defaultColumnStatus, setDefaultColumnStatus] = useState<Task["status"]>("todo");
   const [deletingTask, setDeletingTask] = useState<Task | null>(null);
   const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
+  const [isRiskModalOpen, setIsRiskModalOpen] = useState(false);
+  const [riskAssessmentToast, setRiskAssessmentToast] = useState<{ runId: string; summary: string } | null>(null);
 
   // Statistics
   const totalTasks = tasks.length;
@@ -232,6 +241,19 @@ export const EventTimelineTab: React.FC = () => {
             </button>
           </div>
 
+          {/* Assess Schedule Risk Button */}
+          <button
+            type="button"
+            className="btn-risk-assessment"
+            onClick={() => setIsRiskModalOpen(true)}
+            title="Run AI Risk & Change Impact assessment on event timeline"
+            id="assess-risk-btn"
+            data-testid="assess-risk-btn"
+          >
+            <ShieldAlert size={14} />
+            <span>Assess Schedule Risk</span>
+          </button>
+
           {/* Primary Add Task Button */}
           <button
             type="button"
@@ -243,6 +265,51 @@ export const EventTimelineTab: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Risk Assessment Success Notification */}
+      {riskAssessmentToast && (
+        <div
+          className="risk-success-notification"
+          role="status"
+          data-testid="risk-assessment-notification"
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            padding: "0.75rem 1rem",
+            background: "#f0fdf4",
+            border: "1px solid #bbf7d0",
+            borderRadius: 8,
+            marginBottom: "1rem",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+            <Sparkles size={16} style={{ color: "#16a34a" }} />
+            <span style={{ fontSize: "0.875rem", color: "#166534", fontWeight: 500 }}>
+              Risk Assessment generated! A remediation proposal is pending review in the Agent Console.
+            </span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <button
+              type="button"
+              className="btn btn-primary"
+              style={{ padding: "0.3rem 0.75rem", fontSize: "0.8rem" }}
+              onClick={() => navigate(`/events/${eventId}/agents`)}
+              id="view-in-agent-console-btn"
+            >
+              View in Agent Console
+            </button>
+            <button
+              type="button"
+              onClick={() => setRiskAssessmentToast(null)}
+              style={{ background: "transparent", border: "none", cursor: "pointer", color: "#166534", padding: "0.2rem" }}
+              aria-label="Dismiss notification"
+            >
+              <X size={15} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Main Content Area */}
       {isLoading ? (
@@ -324,6 +391,20 @@ export const EventTimelineTab: React.FC = () => {
         onConfirm={handleDeleteConfirm}
         isDeleting={deleteTaskMutation.isPending}
       />
+
+      {/* Risk Assessment Modal */}
+      <RiskAssessmentModal
+        isOpen={isRiskModalOpen}
+        onClose={() => setIsRiskModalOpen(false)}
+        eventId={eventId}
+        onSuccess={(run) => {
+          setRiskAssessmentToast({
+            runId: run.id,
+            summary: (run.proposed_diff?.impact_summary as string) || "Proposal ready for review.",
+          });
+        }}
+      />
     </div>
   );
 };
+
