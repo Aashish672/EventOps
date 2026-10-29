@@ -20,6 +20,8 @@ class AgentState(TypedDict):
     tasks_snapshot: list[dict[str, Any]]
     budget_snapshot: dict[str, Any]
     vendors_snapshot: list[dict[str, Any]]
+    team_snapshot: list[dict[str, Any]]
+    planning_options: dict[str, Any]
 
     #Reasoning and outputs
     reasoning: str
