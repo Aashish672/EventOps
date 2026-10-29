@@ -52,3 +52,53 @@ class RiskRemediationProposal(BaseModel):
         default_factory=list,
         description="Optional list of budget buffers or reallocations",
     )
+
+class MilestoneBlueprint(BaseModel):
+    """Represents an operational phase in the event timeline (e.g., Venue & Permits)."""
+
+    name: str = Field(description="Operational milestone name")
+    target_date: str = Field(description="ISO 8601 formatted date/timestamp for this milestone deadline")
+    description: str = Field(default="", description="Summary of key objectives for this milestone")
+
+class TaskBlueprint(BaseModel):
+    """Represents an actionable task item synthesized by the Event Planning Agent."""
+    title: str = Field(description="Actionable task title")
+    description: str = Field(default="", description="Detailed Instructions, checklist, or vendor guidance")
+    due_date: str = Field(description="ISO 8601 formatted date/timestamp for that task due_date")
+    suggested_role: Literal["planner", "coordinator", "freelancer", "volunteer", "unassigned"] = Field(
+        default="planner",
+        description="Recommend team persona for task execution",
+    )
+    priority: Literal["high", "medium", "low"] = Field(
+        default="medium",
+        description="Task Priority Level",
+    )
+    milestone_name: str = Field(
+        default="",
+        description="Name of the associated operational milestone phase",
+    )
+
+class EventPlanProposal(BaseModel):
+    """
+    Structured Payload returned by the LangGraph Event Planning Agent.
+    Guarantees strict schema validation before mapping into Single Write Path CREATE mutations.
+    """
+
+    plan_summary: str = Field(
+        description="Executive summary of the generated operational roadmap"
+    )
+    event_category: str = Field(
+        default="General Event",
+        description="Event category",
+    )
+    milestones: list[MilestoneBlueprint] = Field(
+        default_factory=list,
+        description="Ordered operational milestone phases",
+    )
+    tasks: list[TaskBlueprint] = Field(
+        default_factory=list,
+        description="Synthesized operational tasks with relative lead-time due dates",
+    )
+    reasoning: str = Field(
+        description="Chain-of-thought explaining milestone breakdown and timeline offsets.",
+    )
