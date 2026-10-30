@@ -70,6 +70,7 @@ vi.mock("../../../hooks/useDocuments", () => ({
 vi.mock("../../../hooks/useAgents", () => ({
   useAgentRuns: () => ({ data: [], isLoading: false }),
   useAnalyzeEventRisk: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useGenerateEventPlan: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 import { useEvent } from "../../../hooks/useEvents";

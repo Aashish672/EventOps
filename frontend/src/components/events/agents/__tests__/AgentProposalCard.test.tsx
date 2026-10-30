@@ -191,5 +191,36 @@ describe("AgentProposalCard Component", () => {
     expect(badge).toHaveTextContent("HIGH RISK");
     expect(badge).toHaveClass("severity-high");
   });
+
+  it("renders event planning roadmap plan summary and milestone pills for event_planning agent", () => {
+    const planningProposal: AgentRun = {
+      ...mockProposal,
+      id: "run-plan-1",
+      agent_type: "event_planning",
+      trigger: "AI Roadmap Synthesis: Corporate Conference",
+      reasoning: "Constructed 5-milestone roadmap reverse-scheduled from event date.",
+      proposed_diff: {
+        mutations: [],
+        plan_summary: "Comprehensive 120-day reverse-scheduled operational roadmap.",
+        event_category: "Corporate Conference",
+        milestones: [
+          { name: "Concept & Feasibility", target_date: "2026-09-01T00:00:00Z" },
+          { name: "Venue Contracting", target_date: "2026-10-01T00:00:00Z" },
+        ],
+      },
+    };
+
+    renderWithClient(
+      <AgentProposalCard proposal={planningProposal} eventId="evt-100" canModerate={true} />
+    );
+
+    expect(screen.getByText("Event Planning Agent")).toBeInTheDocument();
+    const planBox = screen.getByTestId("proposal-plan-summary");
+    expect(planBox).toBeInTheDocument();
+    expect(planBox).toHaveTextContent("Operational Roadmap Strategy (Corporate Conference)");
+    expect(planBox).toHaveTextContent("Comprehensive 120-day reverse-scheduled operational roadmap.");
+    expect(screen.getByText("Phase 1: Concept & Feasibility")).toBeInTheDocument();
+    expect(screen.getByText("Phase 2: Venue Contracting")).toBeInTheDocument();
+  });
 });
 
