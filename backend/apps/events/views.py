@@ -2,6 +2,7 @@ import logging
 
 from agents.models import AgentRun
 from agents.orchestration.graph import run_risk_impact_agent
+from agents.orchestration.planning_graph import run_event_planning_agent
 from agents.serializers import AgentRunSerializer
 from core.permissions import IsOrganizationPlannerOrOwner
 from organizations.models import Membership
@@ -111,6 +112,71 @@ class EventViewSet(viewsets.ModelViewSet):
             logger.exception("Error running risk analysis for Event %s", event.id)
             return Response(
                 {"error": "Failed to run risk analysis: " + str(exc)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+    
+    @action(detail=True, methods=["post"], url_path="generate-plan")
+    def generate_plan(self, request, pk=None) -> Response:
+        """
+        Triggers the LangGraph Event Planning agent on-demand for this event.
+        Assembles live context snapshots, executes LLM reverse-scheduling and 
+        registers an auditable pending AgentRun proposal with 'create' Task mutations 
+        ready for review in the Agent Console.
+        """
+        event = self.get_object()
+        trigger_reason = request.data.get(
+            "trigger_reason", "Manual planner roadmap generation"
+        )
+        planning_options = {
+            "category": request.data.get("category", "General Event"),
+            "scale": request.data.get("scale", "standard"),
+            "notes": request.data.get("notes", "None provided."),
+        }
+
+        logger.info(
+            "User %s initiated on-demand event planning for Event %s (Org %s)",
+            request.user.id,
+            event.id,
+            event.organization.id,
+        )
+
+        try:
+            #Execute the compiled 3-node LangGraph planning workflow
+            result_state = run_event_planning_agent(
+                event_id=str(event.id),
+                org_id=str(event.organization_id),
+                trigger=trigger_reason,
+                planning_options=planning_options,
+            )
+
+            proposed_diff = result_state.get("proposed_diff", {})
+            reasoning = result_state.get("reasoning", "")
+
+            # Persist pending AgentRun following the Single Write Path Contract
+            agent_run = AgentRun.objects.create(
+                organization=event.organization,
+                event=event,
+                agent_type=AgentRun.AgentType.EVENT_PLANNING,
+                trigger=trigger_reason,
+                input_snapshot={
+                    "trigger": trigger_reason,
+                    "event_summary": result_state.get("event_summary", {}),
+                    "team_count": len(result_state.get("team_snapshot", [])),
+                    "existing_tasks_count": len(result_state.get("tasks_snapshot", [])),
+                    "planning_options": planning_options,
+                },
+                reasoning=reasoning,
+                proposed_diff=proposed_diff,
+                state=AgentRun.State.PENDING,
+            )
+
+            serializer = AgentRunSerializer(agent_run)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        
+        except Exception as exc:
+            logger.exception("Error running event planning agent for Event %s", event.id)
+            return Response(
+                {"error": "Failed to run event planning agent: " + str(exc)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
