@@ -1,7 +1,7 @@
 import logging
 from typing import Any
 
-from agents.orchestration.llm import get_llm
+from agents.orchestration.llm import MockEventPlanningLLM, get_llm
 from agents.orchestration.prompts import (
     EVENT_PLANNING_SYSTEM_PROMPT,
     format_event_planning_prompt,
@@ -78,18 +78,31 @@ def decompose_and_plan_node(state: AgentState, llm: Any = None) -> dict[str, Any
             "reasoning": proposal.reasoning,
             "raw_proposal": proposal.model_dump(),
         }
-    except Exception as e:
-        logger.exception("decompose_and_plan_node encountered an error")
-        return {
-            "errors": [str(e)],
-            "raw_proposal": {
-                "plan_summary": f"Automated planning error: {e}",
-                "event_category": "General Event",
-                "milestones": [],
-                "tasks": [],
-                "reasoning": "Failed to synthesize event roadmap due to an error.",
-            },
-        }
+    except Exception as e:  # noqa: BLE001
+        logger.warning(
+            "decompose_and_plan_node: Primary LLM error (%s). Falling back to MockEventPlanningLLM.",
+            e,
+        )
+        try:
+            fallback_client = MockEventPlanningLLM().with_structured_output(EventPlanProposal)
+            fallback_proposal: EventPlanProposal = fallback_client.invoke(messages)
+            return {
+                "errors": [f"Primary LLM fallback: {e}"],
+                "reasoning": fallback_proposal.reasoning,
+                "raw_proposal": fallback_proposal.model_dump(),
+            }
+        except Exception as fallback_err:
+            logger.exception("Fallback Mock LLM generation also failed")
+            return {
+                "errors": [str(e), str(fallback_err)],
+                "raw_proposal": {
+                    "plan_summary": f"Automated planning error: {e}",
+                    "event_category": "General Event",
+                    "milestones": [],
+                    "tasks": [],
+                    "reasoning": "Failed to synthesize event roadmap due to an error.",
+                },
+            }
 
 
 def generate_plan_proposal_node(state: AgentState) -> dict[str, Any]:

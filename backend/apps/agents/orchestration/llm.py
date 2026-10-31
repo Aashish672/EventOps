@@ -91,12 +91,14 @@ class MockRiskImpactLLM:
     def invoke(self, inputs: Any, **kwargs: Any) -> AIMessage:
         return AIMessage(content="Risk & Change Impact analysis completed successfully.")
 
-def get_llm(provider: str | None = None, temperature: float = 0.1,
-agent_type: str = "risk_impact") -> Any:
-    """ 
-    Factory function returning a configured LLM Client.
-    Prefers free providers (Groq -> Gemini) and falls back to MockRiskImpactLLM 
-    if no credentials are configured or MOCK_LLM=True
+def get_llm(
+    provider: str | None = None,
+    temperature: float = 0.1,
+    agent_type: str = "risk_impact",
+) -> Any:
+    """Factory function returning a configured LLM Client.
+    Prefers configured provider (DEFAULT_LLM_PROVIDER -> Groq -> Gemini)
+    and falls back to Mock LLMs if no credentials are configured or MOCK_LLM=True.
     """
     use_mock = os.getenv("MOCK_LLM", "False").lower() in ("true", "1", "yes")
     if use_mock:
@@ -106,8 +108,25 @@ agent_type: str = "risk_impact") -> Any:
         logger.info("Using MockRiskImpactLLM (MOCK_LLM is enabled).")
         return MockRiskImpactLLM()
 
+    provider = provider or os.getenv("DEFAULT_LLM_PROVIDER")
 
-    #1. Try Groq
+    # 1. Try Gemini if explicitly selected or default
+    gemini_api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+    if provider == "gemini" and gemini_api_key:
+        try:
+            from langchain_google_genai import ChatGoogleGenerativeAI
+
+            model_name = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+            logger.info("Initialising ChatGoogleGenerativeAI with model: %s", model_name)
+            return ChatGoogleGenerativeAI(
+                model=model_name,
+                temperature=temperature,
+                google_api_key=gemini_api_key,
+            )
+        except Exception:
+            logger.exception("Failed to initialise ChatGoogleGenerativeAI, attempting fallback.")
+
+    # 2. Try Groq
     groq_api_key = os.getenv("GROQ_API_KEY")
     if (provider == "groq" or not provider) and groq_api_key:
         try:
