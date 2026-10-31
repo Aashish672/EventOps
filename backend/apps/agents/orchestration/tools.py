@@ -3,6 +3,7 @@ from typing import Any
 
 from events.models import BudgetCategory, Event, Task, VendorBooking
 from langchain_core.tools import tool
+from organizations.models import Membership
 
 logger = logging.getLogger(__name__)
 
@@ -99,4 +100,25 @@ def get_event_vendors(event_id: str, org_id: str) -> list[dict[str, Any]]:
             "agreed_price": str(b.agreed_price) if b.agreed_price else None,
         }
         for b in bookings
+    ]
+
+@tool
+def get_organization_team(org_id:str) -> list[dict[str, Any]]:
+    """
+    Fetch active team members and roles for an organization.
+    Requires org_id to enforce multi-tenant isolation.
+    """
+    memberships = (
+        Membership.objects.filter(organization_id=org_id)
+        .select_related("user")
+        .order_by("role")
+    )
+    return [
+        {
+            "user_id": m.user_id,
+            "email": m.user.email,
+            "username": m.user.username,
+            "role": m.role,
+        }
+        for m in memberships
     ]

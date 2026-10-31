@@ -92,3 +92,28 @@ export async function analyzeEventRisk(eventId: string, reason?: string): Promis
   return response.json();
 }
 
+export interface GeneratePlanOptions {
+  category?: string;
+  scale?: string;
+  notes?: string;
+  trigger_reason?: string;
+}
+
+export async function generateEventPlan(
+  eventId: string,
+  options?: GeneratePlanOptions
+): Promise<AgentRun> {
+  const response = await fetch(`${API_BASE_URL}/api/events/${eventId}/generate-plan/`, {
+    method: "POST",
+    headers: await getCommonHeaders(),
+    credentials: "include",
+    body: JSON.stringify(options || {}),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    const message = typeof err.detail === "object" ? err.detail.error : err.detail;
+    throw new Error(message || err.error || `Failed to generate event plan (HTTP ${response.status})`);
+  }
+  return response.json();
+}
+
