@@ -6,6 +6,8 @@ import {
   editApproveAgentRun,
   fetchChangeLog,
   analyzeEventRisk,
+  generateEventPlan,
+  GeneratePlanOptions,
 } from "../api/agents";
 import { ProposalDiff } from "../api/types";
 
@@ -74,6 +76,17 @@ export function useAnalyzeEventRisk(eventId: string) {
 
   return useMutation({
     mutationFn: (reason?: string) => analyzeEventRisk(eventId, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["agent-runs", eventId] });
+    },
+  });
+}
+
+export function useGenerateEventPlan(eventId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (options?: GeneratePlanOptions) => generateEventPlan(eventId, options),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["agent-runs", eventId] });
     },

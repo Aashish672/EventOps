@@ -30,9 +30,14 @@ vi.mock("../../../../hooks/useTasks", () => ({
 }));
 
 const mockAnalyzeRisk = vi.fn();
+const mockGeneratePlan = vi.fn();
 vi.mock("../../../../hooks/useAgents", () => ({
   useAnalyzeEventRisk: () => ({
     mutateAsync: mockAnalyzeRisk,
+    isPending: false,
+  }),
+  useGenerateEventPlan: () => ({
+    mutateAsync: mockGeneratePlan,
     isPending: false,
   }),
 }));
@@ -172,7 +177,7 @@ describe("EventTimelineTab & Task Management (Epic 3.3)", () => {
     expect(container.querySelector(".placeholder-pulse")).toBeInTheDocument();
   });
 
-  it("renders empty state when event has no tasks", () => {
+  it("renders empty state when event has no tasks with dual action buttons", () => {
     (useTasks as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
       data: [],
       isLoading: false,
@@ -180,7 +185,31 @@ describe("EventTimelineTab & Task Management (Epic 3.3)", () => {
 
     renderComponent();
     expect(screen.getByText("No Tasks Yet")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Generate AI Plan/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Create First Task/i })).toBeInTheDocument();
+  });
+
+  it("clicking empty state 'Generate AI Plan' button opens the GeneratePlanModal", () => {
+    (useTasks as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      data: [],
+      isLoading: false,
+    });
+
+    renderComponent();
+    const generateAiPlanBtn = screen.getByRole("button", { name: /Generate AI Plan/i });
+    fireEvent.click(generateAiPlanBtn);
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByText("AI Event Planning Agent")).toBeInTheDocument();
+  });
+
+  it("clicking toolbar 'Generate Plan' button opens the GeneratePlanModal", () => {
+    renderComponent();
+    const toolbarBtn = screen.getByTestId("generate-plan-btn");
+    fireEvent.click(toolbarBtn);
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByText("AI Event Planning Agent")).toBeInTheDocument();
   });
 
   it("renders Kanban Board with 3 status columns and correct tasks", () => {

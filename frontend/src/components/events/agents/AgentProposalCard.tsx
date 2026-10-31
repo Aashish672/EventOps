@@ -133,6 +133,9 @@ export const AgentProposalCard: React.FC<AgentProposalCardProps> = ({
   const currentDiff = proposal.final_diff || proposal.proposed_diff;
   const riskSeverity = (currentDiff as { risk_severity?: string })?.risk_severity;
   const impactSummary = (currentDiff as { impact_summary?: string })?.impact_summary;
+  const planSummary = (currentDiff as { plan_summary?: string })?.plan_summary;
+  const eventCategory = (currentDiff as { event_category?: string })?.event_category;
+  const milestones = ((currentDiff as { milestones?: Array<{ name: string; target_date?: string }> })?.milestones) || [];
 
   const getRiskSeverityBadge = (severity?: string) => {
     if (!severity) return null;
@@ -233,6 +236,42 @@ export const AgentProposalCard: React.FC<AgentProposalCardProps> = ({
             <span className="impact-summary-title">Executive Impact Assessment</span>
           </div>
           <p className="impact-summary-text">{impactSummary}</p>
+        </div>
+      )}
+
+      {/* Executive Roadmap Plan Summary Callout */}
+      {planSummary && (
+        <div
+          className="proposal-impact-summary-box"
+          data-testid="proposal-plan-summary"
+          style={{ background: "#f5f3ff", borderColor: "#ddd6fe" }}
+        >
+          <div className="impact-summary-header">
+            <CalendarCheck size={16} className="impact-summary-icon" style={{ color: "#7c3aed" }} />
+            <span className="impact-summary-title" style={{ color: "#5b21b6" }}>
+              Operational Roadmap Strategy ({eventCategory || "General Event"})
+            </span>
+          </div>
+          <p className="impact-summary-text" style={{ color: "#4c1d95" }}>{planSummary}</p>
+          {milestones.length > 0 && (
+            <div style={{ marginTop: "0.5rem", display: "flex", flexWrap: "wrap", gap: "0.35rem" }}>
+              {milestones.map((m: { name: string; target_date?: string }, idx: number) => (
+                <span
+                  key={idx}
+                  style={{
+                    fontSize: "0.75rem",
+                    padding: "0.2rem 0.5rem",
+                    background: "#ede9fe",
+                    color: "#5b21b6",
+                    borderRadius: "4px",
+                    fontWeight: 500,
+                  }}
+                >
+                  Phase {idx + 1}: {m.name}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

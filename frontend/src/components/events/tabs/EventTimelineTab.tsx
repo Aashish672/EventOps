@@ -25,6 +25,7 @@ import { TaskListView } from "../tasks/TaskListView";
 import { TaskModal } from "../tasks/TaskModal";
 import { DeleteTaskModal } from "../tasks/DeleteTaskModal";
 import { RiskAssessmentModal } from "../tasks/RiskAssessmentModal";
+import { GeneratePlanModal } from "../tasks/GeneratePlanModal";
 import "../agents/agents.css";
 
 export const EventTimelineTab: React.FC = () => {
@@ -52,6 +53,8 @@ export const EventTimelineTab: React.FC = () => {
   const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
   const [isRiskModalOpen, setIsRiskModalOpen] = useState(false);
   const [riskAssessmentToast, setRiskAssessmentToast] = useState<{ runId: string; summary: string } | null>(null);
+  const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
+  const [planningToast, setPlanningToast] = useState<{ runId: string; summary: string } | null>(null);
 
   // Statistics
   const totalTasks = tasks.length;
@@ -241,6 +244,20 @@ export const EventTimelineTab: React.FC = () => {
             </button>
           </div>
 
+          {/* Generate AI Operational Plan Button */}
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => setIsPlanModalOpen(true)}
+            title="Generate AI Operational Roadmap with milestones and tasks"
+            id="generate-plan-btn"
+            data-testid="generate-plan-btn"
+            style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}
+          >
+            <Sparkles size={14} style={{ color: "var(--accent-primary, #4f46e5)" }} />
+            <span>Generate Plan</span>
+          </button>
+
           {/* Assess Schedule Risk Button */}
           <button
             type="button"
@@ -311,28 +328,85 @@ export const EventTimelineTab: React.FC = () => {
         </div>
       )}
 
+      {/* Planning Roadmap Success Notification */}
+      {planningToast && (
+        <div
+          className="risk-success-notification"
+          role="status"
+          data-testid="planning-success-notification"
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            padding: "0.75rem 1rem",
+            background: "#eef2ff",
+            border: "1px solid #c7d2fe",
+            borderRadius: "8px",
+            marginBottom: "1rem",
+            color: "#3730a3",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <Sparkles size={16} style={{ color: "#4f46e5" }} />
+            <span style={{ fontSize: "0.875rem", fontWeight: 500 }}>
+              Operational roadmap synthesized! Review proposed milestones and tasks in the Agent Console.
+            </span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+            <button
+              type="button"
+              className="btn btn-primary"
+              style={{ padding: "0.3rem 0.65rem", fontSize: "0.8rem", background: "#4f46e5" }}
+              onClick={() => navigate(`/events/${eventId}?tab=agents`)}
+            >
+              View in Agent Console
+            </button>
+            <button
+              type="button"
+              onClick={() => setPlanningToast(null)}
+              style={{ background: "transparent", border: "none", cursor: "pointer", color: "#3730a3", padding: "0.2rem" }}
+              aria-label="Dismiss planning notification"
+            >
+              <X size={15} />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Main Content Area */}
       {isLoading ? (
         <div className="placeholder-pulse" style={{ height: 260, borderRadius: 8, background: "var(--bg-subtle)" }} />
       ) : tasks.length === 0 ? (
         /* Empty State: No tasks created yet */
-        <div className="event-state-box empty-state">
+        <div className="event-state-box empty-state" data-testid="timeline-empty-state">
           <div className="event-state-icon">
             <CheckSquare size={32} color="var(--accent-primary)" />
           </div>
           <h3>No Tasks Yet</h3>
           <p>
-            Start organizing your event by creating your first milestone, vendor coordination item, or planning task.
+            Start organizing your event by synthesizing a full AI operational roadmap, or create your first task manually.
           </p>
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={() => handleOpenCreateModal("todo")}
-            style={{ marginTop: "1rem" }}
-          >
-            <Plus size={15} style={{ marginRight: 6 }} />
-            Create First Task
-          </button>
+          <div style={{ display: "flex", gap: "0.75rem", marginTop: "1rem", justifyContent: "center", flexWrap: "wrap" }}>
+            <button
+              type="button"
+              className="btn btn-primary"
+              id="empty-state-generate-plan-btn"
+              data-testid="empty-state-generate-plan-btn"
+              onClick={() => setIsPlanModalOpen(true)}
+              style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", background: "var(--accent-primary, #4f46e5)" }}
+            >
+              <Sparkles size={15} />
+              <span>Generate AI Plan</span>
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => handleOpenCreateModal("todo")}
+            >
+              <Plus size={15} style={{ marginRight: 6 }} />
+              Create First Task
+            </button>
+          </div>
         </div>
       ) : filteredTasks.length === 0 ? (
         /* No matches for search / filters */
@@ -401,6 +475,19 @@ export const EventTimelineTab: React.FC = () => {
           setRiskAssessmentToast({
             runId: run.id,
             summary: (run.proposed_diff?.impact_summary as string) || "Proposal ready for review.",
+          });
+        }}
+      />
+
+      {/* Generate Plan Modal */}
+      <GeneratePlanModal
+        isOpen={isPlanModalOpen}
+        onClose={() => setIsPlanModalOpen(false)}
+        eventId={eventId}
+        onSuccess={(run) => {
+          setPlanningToast({
+            runId: run.id,
+            summary: (run.proposed_diff?.plan_summary as string) || "Roadmap synthesized.",
           });
         }}
       />
