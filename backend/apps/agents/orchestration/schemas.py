@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field
 
@@ -101,4 +101,72 @@ class EventPlanProposal(BaseModel):
     )
     reasoning: str = Field(
         description="Chain-of-thought explaining milestone breakdown and timeline offsets.",
+    )
+
+class LineItemFlag(BaseModel):
+    """Flags a specific line item as overspent, anomalous, or at risk."""
+
+    line_item_id: str = Field(description="UUID of the BudgetLineItem")
+    description: str = Field(description="Human-readable description of the line item")
+    category_name: str = Field(description="Parent category name")
+    estimated_cost: str = Field(description="Original estimated cost (decimal string)")
+    actual_cost: str = Field(description="Current actual cost (decimal string)")
+    variance_pct: float = Field(
+        description="Percentage varaince: (actual - estimated)/estimated * 100"
+    )
+    flag_type: Literal["overspend", "underspend", "anomaly", "at_risk"] = Field(
+        description="Classification of the budget flag"
+    )
+    recommended_action: Literal[
+        "increase_estimate", "reallocate_from_reserve", "investigate_vendor", "none"
+    ] = Field(default="none", description="Recommended corrective action")
+    reason: str = Field(description="Brief justification for the flag")
+
+
+class CategoryHealthSummary(BaseModel):
+    """Rolled-up health status for a budget category."""
+
+    category_id: str = Field(description="UUID of the BudgetCategory")
+    category_name: str = Field(description="Category name")
+    allocated_amount: str = Field(description="Total allocated budget for this category")
+    total_estimated: str = Field(description="Sum of estimated costs across line items")
+    total_actual: str = Field(description="Sum of actual costs across line items")
+    health_status: Literal["healthy", "warning", "critical"] = Field(
+        description="Overall health: healthy (<90% used), warning (90-110%), critical (>110%)"
+    )
+    recommended_reallocation: str = Field(
+        default="0.00",
+        description="Suggested amount to reallocate TO this category (positive) or FROM it (negative)",
+    )
+
+
+class BudgetIntelligenceProposal(BaseModel):
+    """
+    Structured payload returned by the LangGraph Budget Intelligence Agent.
+    Guarantees strict schema compliance before converting into Single Write Path mutations.
+    """
+    
+    health_score: Annotated[int, Field(ge=0, le=100)] = Field(
+        description="Overall budget health score 0-100 (100 = perfectly on budget)"
+    )
+    executive_summary: str = Field(
+        description="2-3 sentence overview of overall budget health and top risks"
+    )
+    reasoning: str = Field(
+        description="Chain-of-thought analysis explaining variance computations and recommendations"
+    )
+    projected_total_cost: str = Field(
+        description="Forecasted final cost (sum of actual costs + remaining estimated costs)"
+    )
+    flagged_items: list[LineItemFlag] = Field(
+        default_factory=list,
+        description="Line items with significant variance (>100%) or anomalies",
+    )
+    category_summaries: list[CategoryHealthSummary] = Field(
+        default_factory=list,
+        description="Per-category rolled up health summaries"
+    )
+    reallocation_suggestions: list[BudgetAdjustment] = Field(
+        default_factory=list,
+        description="Category-level reallocation recommendations (reuses BudgetAdjustment schema)",
     )
