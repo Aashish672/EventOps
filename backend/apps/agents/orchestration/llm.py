@@ -91,6 +91,91 @@ class MockRiskImpactLLM:
     def invoke(self, inputs: Any, **kwargs: Any) -> AIMessage:
         return AIMessage(content="Risk & Change Impact analysis completed successfully.")
 
+class MockBudgetIntelligenceLLM:
+    """ Offline mock LLM for the Budget Intelligence Agent.
+    Used in CI pipelines and local development without API keys.
+    """
+
+    def __init__(self, canned_proposal: Any = None):
+        self.canned_proposal = canned_proposal
+    
+    def with_structured_output(self, schema: Any, **kwargs: Any) -> RunnableLambda:
+        """Simulates LangChain's structured output mechanism."""
+
+        def _mock_invoke(inputs: Any) -> Any:
+            from agents.orchestration.schemas import (
+                BudgetIntelligenceProposal,
+                LineItemFlag,
+            )
+
+            if self.canned_proposal:
+                return self.canned_proposal
+
+            #Extract budget categories and items from the prompt text
+            prompt_text = ""
+            if isinstance(inputs, list):
+                for msg in inputs:
+                    if hasattr(msg, "content"):
+                        prompt_text += f" {msg.content}"
+                    elif isinstance(msg, dict):
+                        prompt_text += f" {msg.get('content','')}"
+            elif isinstance(inputs, str):
+                prompt_text = inputs
+
+            item_pattern = re.findall(
+                 r"Item ID: ([0-9a-fA-F-]+) \| ([^|]+) \| Est: ([\d.]+) \| Actual: ([\d.]+)",
+                prompt_text,
+            )
+
+            flagged_items: list[LineItemFlag] = []
+            for item_id, desc, estimated, actual in item_pattern:
+                try:
+                    est_f = float(estimated)
+                    act_f = float(actual)
+                    if est_f > 0 and act_f > 0:
+                        variance_pct = (act_f - est_f) /est_f * 100
+
+                        if abs(variance_pct) > 10:
+                            flagged_items.append(
+                                LineItemFlag(
+                                    line_item_id=item_id,
+                                    description=desc.strip(),
+                                    category_name="General",
+                                    estimated_cost=estimated,
+                                    actual_cost=actual,
+                                    variance_pct=round(variance_pct,2),
+                                    flag_type="overspend" if variance_pct > 0 else "underspend",
+                                    recommended_action="increase_estimate" if variance_pct > 0 else "none",
+                                    reason=f"Actual cost deviates by {round(variance_pct,1)}% from estimate.",
+                                )
+                            )
+                    
+                except (ValueError, TypeError):
+                    pass
+            
+            health_score = max(0, 100 - len(flagged_items) * 15)
+
+            return BudgetIntelligenceProposal(
+                health_score=health_score,
+                executive_summary=(
+                    f"Budget analysis complete. {len(flagged_items)} line item(s) flagged for variance. "
+                    "Mock analysis — connect an LLM for production insights."
+                ),
+                reasoning=(
+                    "Mock chain-of-thought: Scanned all line items for actual vs estimated variance. "
+                    "Items exceeding 10% variance threshold have been flagged for review."
+                ),
+                projected_total_cost="0.00",
+                flagged_items=flagged_items,
+                category_summaries=[],
+                reallocation_suggestions=[],
+            )
+        return RunnableLambda(_mock_invoke)
+    
+    def invoke(self, inputs: Any, **kwargs: Any) -> AIMessage:
+        return AIMessage(content="Budget intelligence analysis completed successfully.")
+
+
 def get_llm(
     provider: str | None = None,
     temperature: float = 0.1,
@@ -105,6 +190,9 @@ def get_llm(
         if agent_type == "event_planning":
             logger.info("Using MockEventPlanningLLM (MOCK_LLM is enabled).")
             return MockEventPlanningLLM()
+        if agent_type == "budget_intelligence":
+            logger.info("Using MockBudgetIntelligenceLLM (MOCK_LLM is enabled).")
+            return MockBudgetIntelligenceLLM()
         logger.info("Using MockRiskImpactLLM (MOCK_LLM is enabled).")
         return MockRiskImpactLLM()
 
