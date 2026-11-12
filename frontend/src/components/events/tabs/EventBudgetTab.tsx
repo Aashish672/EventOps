@@ -1,5 +1,5 @@
 import React from "react";
-import { DollarSign, Plus, Search, Filter, ChevronsUpDown } from "lucide-react";
+import { DollarSign, Plus, Search, Filter, ChevronsUpDown, Sparkles, X } from "lucide-react";
 import { useEventContext } from "../../../context/useEventContext";
 import {
   useBudgetCategories,
@@ -16,8 +16,10 @@ import { BudgetCategoryAccordion } from "../budget/BudgetCategoryAccordion";
 import { BudgetCategoryModal } from "../budget/BudgetCategoryModal";
 import { BudgetLineItemModal } from "../budget/BudgetLineItemModal";
 import { DeleteBudgetModal, DeleteBudgetTarget } from "../budget/DeleteBudgetModal";
+import { AnalyzeBudgetModal } from "../budget/AnalyzeBudgetModal";
 import { BudgetCategory, BudgetLineItem } from "../../../api/types";
 import "../budget/budget.css";
+import "../agents/agents.css";
 
 export const EventBudgetTab: React.FC = () => {
   const { eventId, event } = useEventContext();
@@ -39,6 +41,8 @@ export const EventBudgetTab: React.FC = () => {
   const [editingItem, setEditingItem] = React.useState<BudgetLineItem | null>(null);
   const [defaultItemCategoryId, setDefaultItemCategoryId] = React.useState<string | undefined>(undefined);
   const [deletingTarget, setDeletingTarget] = React.useState<DeleteBudgetTarget | null>(null);
+  const [isAnalyzeBudgetModalOpen, setIsAnalyzeBudgetModalOpen] = React.useState(false);
+  const [budgetToast, setBudgetToast] = React.useState<{ runId: string; summary: string } | null>(null);
 
   // Initialize all categories as expanded when data first loads
   React.useEffect(() => {
@@ -207,15 +211,84 @@ export const EventBudgetTab: React.FC = () => {
             Track allocations, monitor estimated versus actual costs, and log payments for {event?.name}.
           </p>
         </div>
-        <button
-          type="button"
-          className="btn btn-primary"
-          onClick={handleOpenCreateCategory}
-        >
-          <Plus size={15} style={{ marginRight: 6 }} />
-          Add Category
-        </button>
+        <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => setIsAnalyzeBudgetModalOpen(true)}
+            id="analyze-budget-btn"
+            data-testid="analyze-budget-btn"
+            style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}
+            title="Run AI Budget Intelligence agent to analyze variance and overspend"
+          >
+            <Sparkles size={14} style={{ color: "#059669" }} />
+            <span>Analyze Budget</span>
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={handleOpenCreateCategory}
+          >
+            <Plus size={15} style={{ marginRight: 6 }} />
+            Add Category
+          </button>
+        </div>
       </div>
+
+      {/* Budget Analysis Success Notification */}
+      {budgetToast && (
+        <div
+          className="risk-success-notification"
+          role="status"
+          data-testid="budget-analysis-notification"
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            padding: "0.75rem 1rem",
+            marginBottom: "1rem",
+            background: "#ecfdf5",
+            border: "1px solid #a7f3d0",
+            borderRadius: "8px",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+            <Sparkles size={16} style={{ color: "#059669" }} />
+            <span style={{ fontSize: "0.875rem", color: "#065f46", fontWeight: 500 }}>
+              Budget Analysis generated! An auditable proposal is pending review in the Agent Console.
+            </span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => {
+                const consoleTab = document.querySelector(
+                  '[role="tab"][aria-label*="Agent"]'
+                ) as HTMLElement;
+                if (consoleTab) consoleTab.click();
+              }}
+              style={{ fontSize: "0.75rem", padding: "0.25rem 0.5rem" }}
+            >
+              Open Agent Console
+            </button>
+            <button
+              type="button"
+              onClick={() => setBudgetToast(null)}
+              style={{
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                color: "#065f46",
+                padding: "0.2rem",
+              }}
+              aria-label="Dismiss notification"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {isLoading ? (
         <div
@@ -232,15 +305,25 @@ export const EventBudgetTab: React.FC = () => {
             Start organizing event expenses by allocating your total budget into categories
             such as Venue, Catering, Audio/Visual, and Decor.
           </p>
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={handleOpenCreateCategory}
-            style={{ marginTop: "1rem" }}
-          >
-            <Plus size={15} style={{ marginRight: 6 }} />
-            Add First Category
-          </button>
+          <div style={{ display: "flex", gap: "0.5rem", marginTop: "1rem" }}>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => setIsAnalyzeBudgetModalOpen(true)}
+              style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}
+            >
+              <Sparkles size={14} style={{ color: "#059669" }} />
+              <span>Analyze Budget</span>
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleOpenCreateCategory}
+            >
+              <Plus size={15} style={{ marginRight: 6 }} />
+              Add First Category
+            </button>
+          </div>
         </div>
       ) : (
         <div className="budget-content-wrap">
@@ -357,6 +440,19 @@ export const EventBudgetTab: React.FC = () => {
         onClose={() => setDeletingTarget(null)}
         onConfirm={handleDeleteConfirm}
         isDeleting={deleteCategoryMutation.isPending || deleteLineItemMutation.isPending}
+      />
+
+      {/* AI Budget Intelligence Modal */}
+      <AnalyzeBudgetModal
+        isOpen={isAnalyzeBudgetModalOpen}
+        onClose={() => setIsAnalyzeBudgetModalOpen(false)}
+        eventId={eventId}
+        onSuccess={(run) => {
+          setBudgetToast({
+            runId: run.id,
+            summary: "Budget proposal created and ready for review.",
+          });
+        }}
       />
     </div>
   );

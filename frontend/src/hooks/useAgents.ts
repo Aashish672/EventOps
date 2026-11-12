@@ -7,6 +7,7 @@ import {
   fetchChangeLog,
   analyzeEventRisk,
   generateEventPlan,
+  analyzeEventBudget,
   GeneratePlanOptions,
 } from "../api/agents";
 import { ProposalDiff } from "../api/types";
@@ -93,3 +94,14 @@ export function useGenerateEventPlan(eventId: string) {
   });
 }
 
+export function useAnalyzeEventBudget(eventId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (triggerReason?: string) => analyzeEventBudget(eventId, triggerReason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["agent-runs", eventId] });
+      queryClient.invalidateQueries({ queryKey: ["budget-categories", eventId] });
+    },
+  });
+}
