@@ -1,6 +1,7 @@
 import logging
 
 from agents.models import AgentRun
+from agents.orchestration.budget_graph import run_budget_intelligence_agent
 from agents.orchestration.graph import run_risk_impact_agent
 from agents.orchestration.planning_graph import run_event_planning_agent
 from agents.serializers import AgentRunSerializer
@@ -177,6 +178,71 @@ class EventViewSet(viewsets.ModelViewSet):
             logger.exception("Error running event planning agent for Event %s", event.id)
             return Response(
                 {"error": "Failed to run event planning agent: " + str(exc)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+    @action(detail=True, methods=["post"], url_path="analyze-budget")
+    def analyze_budget(self, request, pk=None) -> Response:
+        """
+        Triggers the LangGraph Budget Intelligence agent on-demand for this event.
+        Assembles live context snapshots, executes LLM variance analysis, and
+        registers an auditable pending AgentRun proposal following the Single Write Path contact.
+        """
+        event = self.get_object()
+        trigger_reason = request.data.get(
+            "trigger_reason", "Manual planner budget analysis"
+        )
+
+        logger.info(
+            "User %s authenticated on-demand budget analysis for Event %s (Org %s)",
+            request.user.id,
+            event.id,
+            event.organization.id,
+        )
+
+        try:
+            # Execute the compiled 3-node LangGraph budget workflow
+            result_state = run_budget_intelligence_agent(
+                event_id=str(event.id),
+                org_id=str(event.organization_id),
+            )
+
+            raw_proposal = result_state.get("raw_proposal", {})
+            proposed_diff = result_state.get("proposed_diff", {"mutations": []})
+            reasoning = result_state.get("reasoning", "")
+
+            # Persist pending AgentRun following the Single Write Path contrct
+            agent_run = AgentRun.objects.create(
+                organization=event.organization,
+                event=event,
+                agent_type=AgentRun.AgentType.BUDGET_INTELLIGENCE,
+                trigger=trigger_reason,
+                input_snapshot={
+                    "event_summary": result_state.get("event_summary", {}),
+                    "budget_categories_count": len(
+                        result_state.get("budget_snapshot", {}).get("categories", [])
+                    ),
+                    "vendor_count": len(result_state.get("vendors_snapshot", [])),
+                    "health_score": raw_proposal.get("health_score"),
+                    "flagged_items_count": len(raw_proposal.get("flagged_items", [])),
+                },
+                reasoning=reasoning,
+                proposed_diff=proposed_diff,
+                state=AgentRun.State.PENDING,
+            )
+
+            logger.info(
+                "Created pending Budget Intelligence AgentRun %s for Event %s",
+                agent_run.id,
+                event.id,
+            )
+
+            serializer = AgentRunSerializer(agent_run)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        except Exception as exc:
+            logger.exception("Error running budget intelligence agent for Event %s", event.id)
+            return Response(
+                {"error": "Failed to run budget intelligence agent: " + str(exc)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
