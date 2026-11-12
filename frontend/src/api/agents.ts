@@ -117,3 +117,22 @@ export async function generateEventPlan(
   return response.json();
 }
 
+
+
+export async function analyzeEventBudget(
+  eventId: string,
+  triggerReason?: string
+): Promise<AgentRun> {
+  const response = await fetch(`${API_BASE_URL}/api/events/${eventId}/analyze-budget/`, {
+    method: "POST",
+    headers: await getCommonHeaders(),
+    credentials: "include",
+    body: JSON.stringify({ trigger_reason: triggerReason || "Manual planner budget analysis" }),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    const message = typeof err.detail === "object" ? err.detail.error : err.detail;
+    throw new Error(message || err.error || `Failed to analyze budget (HTTP ${response.status})`);
+  }
+  return response.json();
+}
