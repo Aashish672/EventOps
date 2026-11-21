@@ -16,16 +16,18 @@ from langchain_core.runnables import RunnableLambda
 
 logger = logging.getLogger(__name__)
 
+
 class MockRiskImpactLLM:
     """Determines offline mock LLM for local development, CI pipelines,
     and environments without active API keys.
     """
 
     def __init__(self, canned_proposal: RiskRemediationProposal | None = None):
-        self.canned_proposal =canned_proposal
+        self.canned_proposal = canned_proposal
 
     def with_structured_output(self, schema: Any, **kwargs: Any) -> RunnableLambda:
         """Simulates LangChain's structured output mechanism."""
+
         def _mock_invoke(inputs: Any) -> RiskRemediationProposal:
             if self.canned_proposal:
                 return self.canned_proposal
@@ -55,7 +57,9 @@ class MockRiskImpactLLM:
                         shifted_dt = parsed_dt + timedelta(hours=3)
                         new_due_str = shifted_dt.isoformat()
                     except (ValueError, TypeError):
-                        new_due_str = (datetime.now(UTC) + timedelta(days=2)).isoformat()
+                        new_due_str = (
+                            datetime.now(UTC) + timedelta(days=2)
+                        ).isoformat()
 
                     task_adjustments.append(
                         TaskAdjustment(
@@ -86,19 +90,23 @@ class MockRiskImpactLLM:
                 task_adjustments=task_adjustments,
                 budget_adjustments=[],
             )
+
         return RunnableLambda(_mock_invoke)
 
     def invoke(self, inputs: Any, **kwargs: Any) -> AIMessage:
-        return AIMessage(content="Risk & Change Impact analysis completed successfully.")
+        return AIMessage(
+            content="Risk & Change Impact analysis completed successfully."
+        )
+
 
 class MockBudgetIntelligenceLLM:
-    """ Offline mock LLM for the Budget Intelligence Agent.
+    """Offline mock LLM for the Budget Intelligence Agent.
     Used in CI pipelines and local development without API keys.
     """
 
     def __init__(self, canned_proposal: Any = None):
         self.canned_proposal = canned_proposal
-    
+
     def with_structured_output(self, schema: Any, **kwargs: Any) -> RunnableLambda:
         """Simulates LangChain's structured output mechanism."""
 
@@ -111,19 +119,19 @@ class MockBudgetIntelligenceLLM:
             if self.canned_proposal:
                 return self.canned_proposal
 
-            #Extract budget categories and items from the prompt text
+            # Extract budget categories and items from the prompt text
             prompt_text = ""
             if isinstance(inputs, list):
                 for msg in inputs:
                     if hasattr(msg, "content"):
                         prompt_text += f" {msg.content}"
                     elif isinstance(msg, dict):
-                        prompt_text += f" {msg.get('content','')}"
+                        prompt_text += f" {msg.get('content', '')}"
             elif isinstance(inputs, str):
                 prompt_text = inputs
 
             item_pattern = re.findall(
-                 r"Item ID: ([0-9a-fA-F-]+) \| ([^|]+) \| Est: ([\d.]+) \| Actual: ([\d.]+)",
+                r"Item ID: ([0-9a-fA-F-]+) \| ([^|]+) \| Est: ([\d.]+) \| Actual: ([\d.]+)",
                 prompt_text,
             )
 
@@ -133,7 +141,7 @@ class MockBudgetIntelligenceLLM:
                     est_f = float(estimated)
                     act_f = float(actual)
                     if est_f > 0 and act_f > 0:
-                        variance_pct = (act_f - est_f) /est_f * 100
+                        variance_pct = (act_f - est_f) / est_f * 100
 
                         if abs(variance_pct) > 10:
                             flagged_items.append(
@@ -143,16 +151,20 @@ class MockBudgetIntelligenceLLM:
                                     category_name="General",
                                     estimated_cost=estimated,
                                     actual_cost=actual,
-                                    variance_pct=round(variance_pct,2),
-                                    flag_type="overspend" if variance_pct > 0 else "underspend",
-                                    recommended_action="increase_estimate" if variance_pct > 0 else "none",
-                                    reason=f"Actual cost deviates by {round(variance_pct,1)}% from estimate.",
+                                    variance_pct=round(variance_pct, 2),
+                                    flag_type="overspend"
+                                    if variance_pct > 0
+                                    else "underspend",
+                                    recommended_action="increase_estimate"
+                                    if variance_pct > 0
+                                    else "none",
+                                    reason=f"Actual cost deviates by {round(variance_pct, 1)}% from estimate.",
                                 )
                             )
-                    
+
                 except (ValueError, TypeError):
                     pass
-            
+
             health_score = max(0, 100 - len(flagged_items) * 15)
 
             return BudgetIntelligenceProposal(
@@ -170,10 +182,162 @@ class MockBudgetIntelligenceLLM:
                 category_summaries=[],
                 reallocation_suggestions=[],
             )
+
         return RunnableLambda(_mock_invoke)
-    
+
     def invoke(self, inputs: Any, **kwargs: Any) -> AIMessage:
         return AIMessage(content="Budget intelligence analysis completed successfully.")
+
+
+class MockDocumentIntelligenceLLM:
+    """Offline mock LLM for the Document Intelligence & Vendor Negotiator Agent.
+    Used in CI pipelines and local development without API keys.
+    """
+
+    def __init__(self, canned_proposal: Any = None):
+        self.canned_proposal = canned_proposal
+
+    def with_structured_output(self, schema: Any, **kwargs: Any) -> RunnableLambda:
+        """Simulates LangChain's structured output mechanism."""
+
+        def _mock_invoke(inputs: Any) -> Any:
+            from agents.orchestration.schemas import (
+                ContractExtractionProposal,
+                ExtractedContractItem,
+            )
+
+            if self.canned_proposal:
+                return self.canned_proposal
+
+            prompt_text = ""
+            if isinstance(inputs, list):
+                for msg in inputs:
+                    if hasattr(msg, "content"):
+                        prompt_text += f" {msg.content}"
+                    elif isinstance(msg, dict):
+                        prompt_text += f" {msg.get('content', '')}"
+            elif isinstance(inputs, str):
+                prompt_text = inputs
+
+            # Extract target category allocation if present in prompt
+            allocated = "5000.00"
+            alloc_match = re.search(
+                r"Allocated Category Budget: \$?([\d.]+)", prompt_text
+            )
+            if alloc_match:
+                allocated = alloc_match.group(1)
+
+            # Detect vendor from document title/content or default
+            if "catering" in prompt_text.lower():
+                vendor_name = "Gourmet Gala Catering Co."
+                items = [
+                    ExtractedContractItem(
+                        description="Plated Dinner Service (3-Course Deluxe)",
+                        amount="4200.00",
+                        quantity=100,
+                        unit_price="42.00",
+                        is_tax=False,
+                        milestone="Event Day Dinner Service",
+                    ),
+                    ExtractedContractItem(
+                        description="Bar & Beverage Package (4 hours)",
+                        amount="1800.00",
+                        quantity=100,
+                        unit_price="18.00",
+                        is_tax=False,
+                        milestone="Event Day Bar Service",
+                    ),
+                    ExtractedContractItem(
+                        description="Staffing, Service Gratuity & State Tax",
+                        amount="850.00",
+                        quantity=1,
+                        unit_price="850.00",
+                        is_tax=True,
+                        milestone="Final Settlement",
+                    ),
+                ]
+                total_quoted = "6850.00"
+                category_name = "Catering"
+            else:
+                vendor_name = "Apex Audio Visual & Production"
+                items = [
+                    ExtractedContractItem(
+                        description="Main Stage Line-Array Sound System & Wireless Mics",
+                        amount="3200.00",
+                        quantity=1,
+                        unit_price="3200.00",
+                        is_tax=False,
+                        milestone="Load-in & Soundcheck",
+                    ),
+                    ExtractedContractItem(
+                        description="Intelligent Stage Lighting & Rigging Truss",
+                        amount="2100.00",
+                        quantity=1,
+                        unit_price="2100.00",
+                        is_tax=False,
+                        milestone="Load-in",
+                    ),
+                    ExtractedContractItem(
+                        description="Lead Audio Engineer & Lighting Tech On-Site (8 Hours)",
+                        amount="1200.00",
+                        quantity=2,
+                        unit_price="600.00",
+                        is_tax=False,
+                        milestone="Event Execution",
+                    ),
+                ]
+                total_quoted = "6500.00"
+                category_name = "Audio/Visual & Staging"
+
+            try:
+                tot_f = float(total_quoted)
+                alloc_f = float(allocated)
+                exceeds = tot_f > alloc_f
+                variance = f"{tot_f - alloc_f:.2f}"
+                status = "exceeds_budget" if exceeds else "within_budget"
+            except (ValueError, TypeError):
+                exceeds = False
+                variance = "0.00"
+                status = "within_budget"
+
+            negotiation_draft = ""
+            if exceeds:
+                negotiation_draft = (
+                    f"Dear {vendor_name} Team,\n\n"
+                    f"Thank you for providing the detailed proposal for our upcoming event. "
+                    f"We love your production capabilities and would very much like to partner with you.\n\n"
+                    f"Our current approved budget for this scope is capped at ${allocated}, whereas your quote "
+                    f"comes in at ${total_quoted} (a variance of ${variance}). "
+                    f"Could we explore adjusting the package—such as optimizing technician call times or adjusting "
+                    f"equipment tiers—to bring the total closer to our ${allocated} budget ceiling?\n\n"
+                    f"Looking forward to finding a mutually beneficial arrangement.\n\n"
+                    f"Warm regards,\nEvent Operations Planning Team"
+                )
+
+            return ContractExtractionProposal(
+                vendor_name=vendor_name,
+                total_quoted_amount=total_quoted,
+                contract_date="2026-11-20",
+                payment_terms="50% deposit upon contract execution, remaining 50% net 15 days post-event.",
+                cancellation_terms="Full refund if cancelled 30+ days prior; 50% retained within 14-29 days.",
+                extracted_items=items,
+                budget_status=status,
+                target_category_name=category_name,
+                allocated_category_budget=allocated,
+                variance_amount=variance,
+                negotiation_draft=negotiation_draft,
+                reasoning=(
+                    f"Parsed contract deliverables from {vendor_name}. Computed total quoted amount of ${total_quoted}. "
+                    f"Compared against allocated category budget of ${allocated}. Identified budget status as '{status}'."
+                ),
+            )
+
+        return RunnableLambda(_mock_invoke)
+
+    def invoke(self, inputs: Any, **kwargs: Any) -> AIMessage:
+        return AIMessage(
+            content="Document Intelligence Extraction Completed Successfully"
+        )
 
 
 def get_llm(
@@ -193,6 +357,9 @@ def get_llm(
         if agent_type == "budget_intelligence":
             logger.info("Using MockBudgetIntelligenceLLM (MOCK_LLM is enabled).")
             return MockBudgetIntelligenceLLM()
+        if agent_type == "document_intelligence":
+            logger.info("Using MockDocumentIntelligenceLLM (MOCK_LLM is enabled).")
+            return MockDocumentIntelligenceLLM()
         logger.info("Using MockRiskImpactLLM (MOCK_LLM is enabled).")
         return MockRiskImpactLLM()
 
@@ -205,14 +372,18 @@ def get_llm(
             from langchain_google_genai import ChatGoogleGenerativeAI
 
             model_name = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
-            logger.info("Initialising ChatGoogleGenerativeAI with model: %s", model_name)
+            logger.info(
+                "Initialising ChatGoogleGenerativeAI with model: %s", model_name
+            )
             return ChatGoogleGenerativeAI(
                 model=model_name,
                 temperature=temperature,
                 google_api_key=gemini_api_key,
             )
         except Exception:
-            logger.exception("Failed to initialise ChatGoogleGenerativeAI, attempting fallback.")
+            logger.exception(
+                "Failed to initialise ChatGoogleGenerativeAI, attempting fallback."
+            )
 
     # 2. Try Groq
     groq_api_key = os.getenv("GROQ_API_KEY")
@@ -220,7 +391,7 @@ def get_llm(
         try:
             from langchain_groq import ChatGroq
 
-            model_name = os.getenv("GROQ_MODEL","llama-3.3-70b-versatile")
+            model_name = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
             logger.info("Initialising ChatGroq with model: %s", model_name)
             return ChatGroq(
                 model=model_name,
@@ -229,34 +400,41 @@ def get_llm(
             )
         except Exception:
             logger.exception("Failed to Initialise ChatGroq, attempting fallback.")
-        
+
     # Try Google Gemini
     gemini_api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
     if (provider == "gemini" or not provider) and gemini_api_key:
-        try: 
+        try:
             from langchain_google_genai import ChatGoogleGenerativeAI
 
             model_name = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
-            logger.info("Initialising ChatGoogleGenerativeAI with model: %s", model_name)
+            logger.info(
+                "Initialising ChatGoogleGenerativeAI with model: %s", model_name
+            )
             return ChatGoogleGenerativeAI(
                 model=model_name,
                 temperature=temperature,
                 google_api_key=gemini_api_key,
             )
         except Exception:
-            logger.exception("Failed to initialise ChatGoogleGenerativeAI, attempting fallback.")
-    
+            logger.exception(
+                "Failed to initialise ChatGoogleGenerativeAI, attempting fallback."
+            )
+
     # 3. Fallback: Offline Mock LLM
     if agent_type == "event_planning":
-        logger.warning("No GROQ_API_KEY or GOOGLE_API_KEY found. Defaulting to MockEventPlanningLLM.")
+        logger.warning(
+            "No GROQ_API_KEY or GOOGLE_API_KEY found. Defaulting to MockEventPlanningLLM."
+        )
         return MockEventPlanningLLM()
-    
+
     logger.warning(
         "No GROQ_API_Key or GOOGLE_API_KEY found in environment."
         "Defaulting to deterministic MockRiskImpactLLM for zero-cost operation."
     )
     return MockRiskImpactLLM()
-    
+
+
 class MockEventPlanningLLM:
     """Offline mock LLM for the Event Planning Agent.
     Generates a realistic 5-milestone, 14-task operational breakdown reverse-scheduled
@@ -268,10 +446,11 @@ class MockEventPlanningLLM:
 
     def with_structured_output(self, schema: Any, **kwargs: Any) -> RunnableLambda:
         """Simulates LangChain's structured output mechanism for EventPlanProposal."""
+
         def _mock_invoke(inputs: Any) -> EventPlanProposal:
             if self.canned_proposal:
                 return self.canned_proposal
-            
+
             # Extract prompt text from messages or string
             prompt_text = ""
             if isinstance(inputs, list):
@@ -280,7 +459,7 @@ class MockEventPlanningLLM:
                         prompt_text += f" {msg.content}"
                     elif isinstance(msg, dict):
                         prompt_text += f" {msg.get('content', '')}"
-            
+
             elif isinstance(inputs, str):
                 prompt_text = inputs
 
@@ -292,7 +471,9 @@ class MockEventPlanningLLM:
                 try:
                     clean_date = raw_date.replace("Z", "+00:00")
                     parsed = datetime.fromisoformat(clean_date)
-                    event_start = parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
+                    event_start = (
+                        parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
+                    )
                 except (ValueError, TypeError):
                     pass
 
@@ -458,6 +639,8 @@ class MockEventPlanningLLM:
                     "followed by technical sequencing and final 24h load-in."
                 ),
             )
+
         return RunnableLambda(_mock_invoke)
+
     def invoke(self, inputs: Any, **kwargs: Any) -> AIMessage:
         return AIMessage(content="Event planning roadmap generated successfully.")
