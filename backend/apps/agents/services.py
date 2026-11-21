@@ -13,6 +13,7 @@ from .models import AgentRun, ChangeLogEntry
 logger = logging.getLogger(__name__)
 User = get_user_model()
 
+
 @transaction.atomic
 def apply_agent_proposal(
     agent_run_id: str,
@@ -24,25 +25,27 @@ def apply_agent_proposal(
     Executes inside an atomic transaction with row-level locking.
     Applies proposed mutations to business models and logs every change to ChangeLogEntry.
     """
-    #1. Lock the AgentRun row to prevent race conditions
+    # 1. Lock the AgentRun row to prevent race conditions
     try:
         agent_run = (
             AgentRun.objects.select_for_update()
-            .select_related("event","organization")
+            .select_related("event", "organization")
             .get(id=agent_run_id)
         )
     except AgentRun.DoesNotExist:
         raise ValidationError(f"AgentRun with id '{agent_run_id}' does not exist.")
-    
-    #2. State validation: Only pending proposals can be applied
-    if agent_run.state != AgentRun.State.PENDING:
-        raise ValidationError(f"Cannot apply AgentRun with state '{agent_run.state}'.It must be '{AgentRun.State.PENDING}'.")
 
-    #3. RBAC & Tenant validation: User must be an owner or planner in this organization
+    # 2. State validation: Only pending proposals can be applied
+    if agent_run.state != AgentRun.State.PENDING:
+        raise ValidationError(
+            f"Cannot apply AgentRun with state '{agent_run.state}'.It must be '{AgentRun.State.PENDING}'."
+        )
+
+    # 3. RBAC & Tenant validation: User must be an owner or planner in this organization
     is_authorized = Membership.objects.filter(
         organization=agent_run.organization,
         user=user,
-        role__in=["owner","planner"],
+        role__in=["owner", "planner"],
     ).exists()
 
     if not is_authorized:
@@ -50,16 +53,18 @@ def apply_agent_proposal(
             "You do not have permission to apply this agent proposal. "
             "Only owners and planners can apply proposals."
         )
-    
-    #4. Determine diff to apply (use human-edited diff if provided)
-    diff_to_apply = modified_diff if modified_diff is not None else agent_run.proposed_diff
+
+    # 4. Determine diff to apply (use human-edited diff if provided)
+    diff_to_apply = (
+        modified_diff if modified_diff is not None else agent_run.proposed_diff
+    )
     is_edited = modified_diff is not None
 
-    mutations = diff_to_apply.get("mutations",[])
-    if not isinstance(mutations,list):
+    mutations = diff_to_apply.get("mutations", [])
+    if not isinstance(mutations, list):
         raise ValidationError("Proposal diff must contain a 'mutations' list.")
 
-    #5. Apply each mutation to business records and log to ChangeLogEntry
+    # 5. Apply each mutation to business records and log to ChangeLogEntry
     for item in mutations:
         action = item.get("action")
         entity_type = item.get("entity_type")
@@ -80,9 +85,11 @@ def apply_agent_proposal(
                 entity_type,
                 agent_run.id,
             )
-    
-    #6. Finalize AgentRun state
-    agent_run.state = AgentRun.State.EDITED_APPROVED if is_edited else AgentRun.State.APPROVED
+
+    # 6. Finalize AgentRun state
+    agent_run.state = (
+        AgentRun.State.EDITED_APPROVED if is_edited else AgentRun.State.APPROVED
+    )
     agent_run.final_diff = diff_to_apply
     agent_run.reviewed_by = user
     agent_run.reviewed_at = timezone.now()
@@ -97,6 +104,7 @@ def apply_agent_proposal(
         agent_run.event.id,
     )
     return agent_run
+
 
 @transaction.atomic
 def reject_agent_proposal(
@@ -116,20 +124,22 @@ def reject_agent_proposal(
         )
     except AgentRun.DoesNotExist:
         raise ValidationError(f"AgentRun with id '{agent_run_id}' does not exist.")
-    
+
     if agent_run.state != AgentRun.State.PENDING:
         raise ValidationError(
             f"Cannot reject AgentRun with state '{agent_run.state}'. It must be '{AgentRun.State.PENDING}'."
         )
-    
+
     is_authorized = Membership.objects.filter(
         organization=agent_run.organization,
         user=user,
-        role__in=["owner","planner"],
+        role__in=["owner", "planner"],
     ).exists()
 
     if not is_authorized:
-        raise PermissionDenied("Only organization owners and planners can reject agent proposals.")
+        raise PermissionDenied(
+            "Only organization owners and planners can reject agent proposals."
+        )
 
     agent_run.state = AgentRun.State.REJECTED
     agent_run.reviewed_by = user
@@ -145,15 +155,21 @@ def reject_agent_proposal(
     )
     return agent_run
 
+
 # ------------------ Mutation Helpers ------------------
 
+
 @transaction.atomic
-def _apply_task_mutation(agent_run: AgentRun, action: str, entity_id: Any, fields: dict[str, Any]) -> None:
+def _apply_task_mutation(
+    agent_run: AgentRun, action: str, entity_id: Any, fields: dict[str, Any]
+) -> None:
     if action == "update" and entity_id:
         try:
             task = Task.objects.get(id=entity_id, organization=agent_run.organization)
         except Task.DoesNotExist:
-            raise ValidationError(f"Task with id '{entity_id}' does not exist in this organization.")
+            raise ValidationError(
+                f"Task with id '{entity_id}' does not exist in this organization."
+            )
         before = {k: str(getattr(task, k)) for k in fields if hasattr(task, k)}
         for k, v in fields.items():
             setattr(task, k, v)
@@ -194,12 +210,18 @@ def _apply_task_mutation(agent_run: AgentRun, action: str, entity_id: Any, field
         )
 
 
-def _apply_budget_category_mutation(agent_run: AgentRun, action: str, entity_id: Any, fields: dict[str, Any]) -> None:
+def _apply_budget_category_mutation(
+    agent_run: AgentRun, action: str, entity_id: Any, fields: dict[str, Any]
+) -> None:
     if action == "update" and entity_id:
         try:
-            category = BudgetCategory.objects.get(id=entity_id, organization=agent_run.organization)
+            category = BudgetCategory.objects.get(
+                id=entity_id, organization=agent_run.organization
+            )
         except BudgetCategory.DoesNotExist:
-            raise ValidationError(f"BudgetCategory with id '{entity_id}' does not exist in this organization.")
+            raise ValidationError(
+                f"BudgetCategory with id '{entity_id}' does not exist in this organization."
+            )
         before = {k: str(getattr(category, k)) for k in fields if hasattr(category, k)}
         for k, v in fields.items():
             setattr(category, k, v)
@@ -218,12 +240,18 @@ def _apply_budget_category_mutation(agent_run: AgentRun, action: str, entity_id:
         )
 
 
-def _apply_budget_line_item_mutation(agent_run: AgentRun, action: str, entity_id: Any, fields: dict[str, Any]) -> None:
+def _apply_budget_line_item_mutation(
+    agent_run: AgentRun, action: str, entity_id: Any, fields: dict[str, Any]
+) -> None:
     if action == "update" and entity_id:
         try:
-            item = BudgetLineItem.objects.get(id=entity_id, organization=agent_run.organization)
+            item = BudgetLineItem.objects.get(
+                id=entity_id, organization=agent_run.organization
+            )
         except BudgetLineItem.DoesNotExist:
-            raise ValidationError(f"BudgetLineItem with id '{entity_id}' does not exist in this organization.")
+            raise ValidationError(
+                f"BudgetLineItem with id '{entity_id}' does not exist in this organization."
+            )
         before = {k: str(getattr(item, k)) for k in fields if hasattr(item, k)}
         for k, v in fields.items():
             setattr(item, k, v)
@@ -241,13 +269,61 @@ def _apply_budget_line_item_mutation(agent_run: AgentRun, action: str, entity_id
             agent_run=agent_run,
         )
 
+    elif action == "create":
+        category_id = fields.get("category_id")
+        category = None
+        if category_id:
+            category = BudgetCategory.objects.filter(
+                id=category_id, organization=agent_run.organization
+            ).first()
+        if not category:
+            category_name = fields.get("category_name", "Vendor Quotes & Contracts")
+            category, _ = BudgetCategory.objects.get_or_create(
+                organization=agent_run.organization,
+                event=agent_run.event,
+                name=category_name,
+                defaults={"allocated_amount": "0.00"},
+            )
 
-def _apply_vendor_booking_mutation(agent_run: AgentRun, action: str, entity_id: Any, fields: dict[str, Any]) -> None:
+        item = BudgetLineItem.objects.create(
+            organization=agent_run.organization,
+            event=agent_run.event,
+            category=category,
+            description=fields.get("description", "Extracted Contract Line Item"),
+            estimated_cost=fields.get("estimated_cost", "0.00"),
+            actual_cost=fields.get("actual_cost", "0.00"),
+            is_paid=fields.get("is_paid", False),
+        )
+
+        ChangeLogEntry.objects.create(
+            organization=agent_run.organization,
+            event=agent_run.event,
+            actor_type=ChangeLogEntry.ActorType.AGENT,
+            actor_id=agent_run.agent_type,
+            entity_type="BudgetLineItem",
+            entity_id=str(item.id),
+            before=None,
+            after={
+                "description": item.description,
+                "estimated_cost": str(item.estimated_cost),
+                "category": category.name,
+            },
+            agent_run=agent_run,
+        )
+
+
+def _apply_vendor_booking_mutation(
+    agent_run: AgentRun, action: str, entity_id: Any, fields: dict[str, Any]
+) -> None:
     if action == "update" and entity_id:
         try:
-            booking = VendorBooking.objects.get(id=entity_id, organization=agent_run.organization)
+            booking = VendorBooking.objects.get(
+                id=entity_id, organization=agent_run.organization
+            )
         except VendorBooking.DoesNotExist:
-            raise ValidationError(f"VendorBooking with id '{entity_id}' does not exist in this organization.")
+            raise ValidationError(
+                f"VendorBooking with id '{entity_id}' does not exist in this organization."
+            )
         before = {k: str(getattr(booking, k)) for k in fields if hasattr(booking, k)}
         for k, v in fields.items():
             setattr(booking, k, v)
@@ -264,4 +340,3 @@ def _apply_vendor_booking_mutation(agent_run: AgentRun, action: str, entity_id: 
             after=after,
             agent_run=agent_run,
         )
-    

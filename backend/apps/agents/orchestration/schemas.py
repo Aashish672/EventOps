@@ -170,3 +170,52 @@ class BudgetIntelligenceProposal(BaseModel):
         default_factory=list,
         description="Category-level reallocation recommendations (reuses BudgetAdjustment schema)",
     )
+
+class ExtractedContractItem(BaseModel):
+    """Represents a discrete deliverable or free item parsed from a vendor contract or quote."""
+    description: str = Field(description="Description of the deliverable or service item")
+    amount: str = Field(description="Total monetary cost for this item (clean decimal string, e.g. '1250.00')")
+    quantity: int = Field(default=1, description="Quantity or units included")
+    unit_price: str = Field(default="0.00", description="Cost per unit if specified")
+    is_tax: bool = Field(default=False, description="True if this line represents tax, gratuity or surcharge")
+    milestone: str = Field(default="", description="Associated milestone phase or due date if stated in contract")
+
+
+class ContractExtractionProposal(BaseModel):
+    """
+    Structured payload returned by the LangGraph Document Intelligence Agent.
+    Guarantees strict schema compliance before converting into Single Write Path mutations.
+    """
+
+    vendor_name: str = Field(description="Name of the vendor or service provider identified in the document")
+    total_quoted_amount: str = Field(description="Total quoted price across all items (decimal string)")
+    contract_date: str = Field(default="", description="Date of contract execution or quote expiry if detected")
+    payment_terms: str = Field(default="", description="Deposit schedule and payment terms (e.g. '50% deposit, net 30')")
+    cancellation_terms: str = Field(default="", description="Cancellation and refund policies extracted from contract")
+    extracted_items: list[ExtractedContractItem] = Field(
+        default_factory=list,
+        description="Individual deliverables, equipment, labor, and surcharge items",
+    )
+    budget_status: Literal["within_budget", "exceeds_budget", "unknown"] = Field(
+        default="unknown",
+        description="Comparison status against the event's category allocation",
+    )
+    target_category_name: str = Field(
+        default="Vendor Quotes & Contracts",
+        description="Name of the BudgetCategory this quote maps to (e.g. Catering, AV & Staging)",
+    )
+    allocated_category_budget: str = Field(
+        default="0.00",
+        description="Total allocated budget for the target category",
+    )
+    variance_amount: str = Field(
+        default="0.00",
+        description="Quoted amount minus allocated budget (positive if over budget)",
+    )
+    negotiation_draft: str = Field(
+        default="",
+        description="Polite, professional negotiation counter-offer draft email/letter if quote exceeds budget",
+    )
+    reasoning: str = Field(
+        description="Chain-of-thought analysis explaining extraction, variance calculations, and negotiation angle",
+    )
