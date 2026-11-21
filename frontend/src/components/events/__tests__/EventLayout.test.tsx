@@ -72,6 +72,7 @@ vi.mock("../../../hooks/useAgents", () => ({
   useAnalyzeEventRisk: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useGenerateEventPlan: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useAnalyzeEventBudget: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useAnalyzeDocument: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 import { useEvent } from "../../../hooks/useEvents";

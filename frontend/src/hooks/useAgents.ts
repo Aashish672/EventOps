@@ -8,7 +8,9 @@ import {
   analyzeEventRisk,
   generateEventPlan,
   analyzeEventBudget,
+  analyzeDocument,
   GeneratePlanOptions,
+  AnalyzeDocumentOptions,
 } from "../api/agents";
 import { ProposalDiff } from "../api/types";
 
@@ -102,6 +104,26 @@ export function useAnalyzeEventBudget(eventId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["agent-runs", eventId] });
       queryClient.invalidateQueries({ queryKey: ["budget-categories", eventId] });
+    },
+  });
+}
+
+export function useAnalyzeDocument(eventId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      documentId,
+      options,
+    }: {
+      documentId: string;
+      options?: AnalyzeDocumentOptions;
+    }) => analyzeDocument(documentId, options),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["agent-runs", eventId] });
+      queryClient.invalidateQueries({ queryKey: ["documents", eventId] });
+      queryClient.invalidateQueries({ queryKey: ["budget-categories", eventId] });
+      queryClient.invalidateQueries({ queryKey: ["budget_categories", eventId] });
     },
   });
 }

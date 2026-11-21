@@ -401,6 +401,26 @@ describe("DocumentList Component", () => {
 
     expect(screen.getByText("Master Venue Contract")).toBeInTheDocument();
   });
+
+  it("renders analyze with AI button and triggers onAnalyzeDocument callback", () => {
+    const mockAnalyze = vi.fn();
+    render(
+      <DocumentList
+        documents={mockDocuments}
+        isLoading={false}
+        onAddDocument={vi.fn()}
+        onEditDocument={vi.fn()}
+        onDeleteDocument={vi.fn()}
+        onAnalyzeDocument={mockAnalyze}
+      />
+    );
+
+    const analyzeBtn = screen.getByLabelText(`Analyze ${mockDocuments[0].title} with AI`);
+    expect(analyzeBtn).toBeInTheDocument();
+    fireEvent.click(analyzeBtn);
+
+    expect(mockAnalyze).toHaveBeenCalledWith(mockDocuments[0]);
+  });
 });
 
 describe("EventDocumentsTab Integration (Sub-Task 3.7.1)", () => {
