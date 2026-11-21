@@ -222,5 +222,50 @@ describe("AgentProposalCard Component", () => {
     expect(screen.getByText("Phase 1: Concept & Feasibility")).toBeInTheDocument();
     expect(screen.getByText("Phase 2: Venue Contracting")).toBeInTheDocument();
   });
+
+  it("renders contract extraction details and negotiation counter-offer draft for document_intelligence agent", () => {
+    const docProposal: AgentRun = {
+      ...mockProposal,
+      id: "run-doc-1",
+      agent_type: "document_intelligence",
+      trigger: "AI Contract Analysis for Catering Master Agreement",
+      reasoning: "Extracted $12,500 quote from Taste of Elegance exceeding Catering allocation.",
+      input_snapshot: {
+        document_id: "doc-1",
+        document_title: "Catering Master Agreement",
+        target_category_name: "Catering",
+        vendor_name: "Taste of Elegance",
+        total_quoted_amount: "12500.00",
+        budget_status: "exceeds_budget",
+      },
+      proposed_diff: {
+        mutations: [],
+        vendor_name: "Taste of Elegance",
+        total_quoted_amount: "12500.00",
+        budget_status: "exceeds_budget",
+        variance_amount: "2500.00",
+        payment_terms: "50% upfront, 50% net-30",
+        cancellation_terms: "Full refund 14 days prior",
+        negotiation_draft: "Dear Taste of Elegance, regarding your catering proposal...",
+      },
+    };
+
+    renderWithClient(
+      <AgentProposalCard proposal={docProposal} eventId="evt-100" canModerate={true} />
+    );
+
+    expect(screen.getByText("Document Intelligence Agent")).toBeInTheDocument();
+    const contractSummary = screen.getByTestId("proposal-contract-summary");
+    expect(contractSummary).toBeInTheDocument();
+    expect(contractSummary).toHaveTextContent("Taste of Elegance");
+    expect(contractSummary).toHaveTextContent("$12,500.00");
+    expect(contractSummary).toHaveTextContent("Exceeds Budget (+$2,500)");
+    expect(contractSummary).toHaveTextContent("50% upfront, 50% net-30");
+
+    const draftBox = screen.getByTestId("negotiation-draft-box");
+    expect(draftBox).toBeInTheDocument();
+    expect(draftBox).toHaveTextContent("Vendor Negotiation Counter-Offer Draft");
+    expect(draftBox).toHaveTextContent("Dear Taste of Elegance, regarding your catering proposal...");
+  });
 });
 
