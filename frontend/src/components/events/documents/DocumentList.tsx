@@ -10,6 +10,7 @@ import {
   Image as ImageIcon,
   Link as LinkIcon,
   Calendar,
+  Sparkles,
 } from "lucide-react";
 import { Document } from "../../../api/types";
 import { detectDocumentType, DocumentCategory } from "./documentUtils";
@@ -20,6 +21,7 @@ interface DocumentListProps {
   onAddDocument: () => void;
   onEditDocument: (doc: Document) => void;
   onDeleteDocument: (doc: Document) => void;
+  onAnalyzeDocument?: (doc: Document) => void;
 }
 
 export const DocumentList: React.FC<DocumentListProps> = ({
@@ -28,6 +30,7 @@ export const DocumentList: React.FC<DocumentListProps> = ({
   onAddDocument,
   onEditDocument,
   onDeleteDocument,
+  onAnalyzeDocument,
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -194,6 +197,17 @@ export const DocumentList: React.FC<DocumentListProps> = ({
                     {/* Action Buttons */}
                     <td>
                       <div className="doc-actions-cell">
+                        {onAnalyzeDocument && (
+                          <button
+                            type="button"
+                            className="doc-action-btn analyze-btn"
+                            onClick={() => onAnalyzeDocument(doc)}
+                            title="Analyze contract with AI"
+                            aria-label={`Analyze ${doc.title} with AI`}
+                          >
+                            <Sparkles size={14} />
+                          </button>
+                        )}
                         <a
                           href={doc.file_url}
                           target="_blank"

@@ -136,3 +136,28 @@ export async function analyzeEventBudget(
   }
   return response.json();
 }
+
+export interface AnalyzeDocumentOptions {
+  target_category_id?: string;
+  target_category_name?: string;
+  notes?: string;
+  trigger_reason?: string;
+}
+
+export async function analyzeDocument(
+  documentId: string,
+  options?: AnalyzeDocumentOptions
+): Promise<AgentRun> {
+  const response = await fetch(`${API_BASE_URL}/api/documents/${documentId}/analyze/`, {
+    method: "POST",
+    headers: await getCommonHeaders(),
+    credentials: "include",
+    body: JSON.stringify(options || {}),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    const message = typeof err.detail === "object" ? err.detail.error : err.detail;
+    throw new Error(message || err.error || `Failed to analyze document (HTTP ${response.status})`);
+  }
+  return response.json();
+}
