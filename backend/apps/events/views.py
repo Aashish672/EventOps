@@ -2,6 +2,7 @@ import logging
 
 from agents.models import AgentRun
 from agents.orchestration.budget_graph import run_budget_intelligence_agent
+from agents.orchestration.document_graph import run_document_intelligence_agent
 from agents.orchestration.graph import run_risk_impact_agent
 from agents.orchestration.planning_graph import run_event_planning_agent
 from agents.serializers import AgentRunSerializer
@@ -443,3 +444,82 @@ class DocumentViewSet(viewsets.ModelViewSet):
 
         # We also want to record WHO uploaded the document
         serializer.save(organization=event.organization, uploaded_by=self.request.user)
+
+    @action(detail=True, methods=["post"], url_path="analyze")
+    def analyze(self, request, pk=None) -> Response:
+        """
+        Triggers the LangGraph Document Intelligence & Vendor Negotiator agent on-demand for this document.
+        Assembles live context snapshots, extracts line items, compares against category budget, drafts a negotiation
+        counter-offer if over budget, and registers an auditable pending AgentRun proposal.
+        """
+        document = self.get_object()
+        target_category_id = request.data.get("target_category_id")
+        target_category_name = request.data.get(
+            "target_category_name", "Vendor Quotes & Contracts"
+        )
+        notes = request.data.get("notes", "")
+        trigger_reason = request.data.get(
+            "trigger_reason", f"Manual contract analysis for {document.title}"
+        )
+
+        logger.info(
+            "User %s initiated document intelligence analysis for Document %s (Event %s, Org %s)",
+            request.user.id,
+            document.id,
+            document.event.id,
+            document.organization.id,
+        )
+
+        try:
+            result_state = run_document_intelligence_agent(
+                event_id=str(document.event.id),
+                org_id=str(document.organization_id),
+                document_id=str(document.id),
+                document_title=document.title,
+                file_url=document.file_url,
+                target_category_id=target_category_id,
+                target_category_name=target_category_name,
+                notes=notes,
+            )
+
+            raw_proposal = result_state.get("raw_proposal", {})
+            proposed_diff = result_state.get("proposed_diff",{"mutations": []})
+            reasoning = result_state.get("reasoning", "")
+
+            # Persist pending AgentRun following the Single Write Path contract
+            agent_run = AgentRun.objects.create(
+                organization=document.organization,
+                event=document.event,
+                agent_type=AgentRun.AgentType.DOCUMENT_INTELLIGENCE,
+                trigger=trigger_reason,
+                input_snapshot={
+                    "document_id": str(document.id),
+                    "document_title": document.title,
+                    "file_url": document.file_url,
+                    "target_category_id": target_category_id,
+                    "target_category_name": target_category_name,
+                    "vendor_name": raw_proposal.get("vendor_name"),
+                    "total_quoted_amount": raw_proposal.get("total_quoted_amount"),
+                    "budget_status": raw_proposal.get("budget_status"),
+                },
+                reasoning=reasoning,
+                proposed_diff=proposed_diff,
+                state=AgentRun.State.PENDING,
+            )
+
+            logger.info(
+                "Created pending Document Intelligence AgentRun %s for Document %s (Event %s)",
+                agent_run.id,
+                document.id,
+                document.event.id,
+            )
+
+            serializer = AgentRunSerializer(agent_run)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        except Exception as exc:
+            logger.exception("Error running document intelligence agent for Document %s", document.id)
+            return Response(
+                {"error": "Failed to run document intelligence agent: " + str(exc)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
